@@ -404,7 +404,7 @@ function Servicos() {
       await api(`servicos?id=eq.${svc.id}`, { method: "PATCH", body: JSON.stringify(svc) });
     } else {
       const { id, ...rest } = svc;
-      await api("servicos", { method: "POST", body: JSON.stringify(rest) });
+      await api("services", { method: "POST", body: JSON.stringify(rest) });
     }
     await load();
     setModal(null);
@@ -783,9 +783,9 @@ export default function Admin() {
 
   const navItems = [
     { id: "dashboard",    icon: "📊", label: "Dashboard" },
-    { id: "profissionais", icon: "👷", label: "Profissionais" },
-    { id: "servicos",     icon: "🛠️", label: "Serviços" },
-    { id: "pedidos",      icon: "📋", label: "Pedidos" },
+    { id: "professionals", icon: "👷", label: "Profissionais" },
+    { id: "services",     icon: "🛠️", label: "Serviços" },
+    { id: "orders",      icon: "📋", label: "Pedidos" },
     { id: "financeiro",   icon: "💰", label: "Financeiro" },
     { id: "config",       icon: "⚙️", label: "Config" },
   ];
@@ -795,9 +795,9 @@ export default function Admin() {
   const renderTab = () => {
     switch(tab) {
       case "dashboard":     return <Dashboard />;
-      case "profissionais": return <Profissionais />;
-      case "servicos":      return <Servicos />;
-      case "pedidos":       return <Pedidos />;
+      case "professionals": return <Profissionais />;
+      case "services":      return <Servicos />;
+      case "orders":       return <Pedidos />;
       case "financeiro":    return <Financeiro />;
       case "config":        return <Configuracoes onLogout={() => setUser(null)} />;
       default:              return <Dashboard />;
