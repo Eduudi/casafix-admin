@@ -16,7 +16,7 @@ const api = async (path, opts = {}) => {
     },
     ...opts,
   });
-  if (!r.ok) return null;
+  if (!r.ok) return null;  '
   const text = await r.text();
   return text ? JSON.parse(text) : null;
 };
