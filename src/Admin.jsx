@@ -400,7 +400,7 @@ function Servicos() {
   useEffect(() => { load(); }, []);
 
   const save = async (svc) => {
-    if (svc.id && !String(svc.id).startsWith("demo")) {
+    const isNew = !svc.id || String(svc.id) === "novo" || String(svc.id).startsWith("demo");     if (!isNew) {
       await api(`services?id=eq.${svc.id}`, { method: "PATCH", body: JSON.stringify(svc) });
     } else {
       const { id, ...rest } = svc;
