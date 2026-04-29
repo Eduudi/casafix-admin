@@ -153,9 +153,9 @@ function Dashboard() {
   useEffect(() => {
     const load = async () => {
       const [orders, pros, svcs] = await Promise.all([
-        api("pedidos?select=price,status"),
-        api("profissionais?select=id,available"),
-        api("servicos?select=id"),
+        api("orders?select=price,status"),
+        api("professionals?select=id,available"),
+        api("services?select=id"),
       ]);
       const o = orders || [];
       const revenue = o.reduce((s, x) => s + (x.price || 0), 0);
@@ -165,7 +165,7 @@ function Dashboard() {
         revenue, fee: revenue * 0.1,
         pending: o.filter(x => x.status === "pending").length,
       });
-      const rec = await api("pedidos?select=*,servicos(name),profiles!client_id(full_name)&order=created_at.desc&limit=5");
+      const rec = await api("orders?select=*,services(name),profiles!client_id(full_name)&order=created_at.desc&limit=5");
       setRecent(rec || DEMO_ORDERS);
       setLoading(false);
     };
@@ -256,7 +256,7 @@ function Profissionais() {
 
   const load = async () => {
     setLoading(true);
-    const data = await api("profissionais?select=*,profiles(full_name,email,phone)&order=rating.desc");
+    const data = await api("professionals?select=*,profiles(full_name,email,phone)&order=rating.desc");
     setPros(data?.length ? data : DEMO_PROS);
     setLoading(false);
   };
@@ -264,7 +264,7 @@ function Profissionais() {
   useEffect(() => { load(); }, []);
 
   const toggleAvailable = async (pro) => {
-    await api(`profissionais?id=eq.${pro.id}`, {
+    await api(`professionals?id=eq.${pro.id}`, {
       method: "PATCH", body: JSON.stringify({ available: !pro.available }),
     });
     setPros(prev => prev.map(p => p.id === pro.id ? { ...p, available: !p.available } : p));
@@ -272,7 +272,7 @@ function Profissionais() {
 
   const savePro = async (pro) => {
     if (pro.id && !String(pro.id).startsWith("demo")) {
-      await api(`profissionais?id=eq.${pro.id}`, {
+      await api(`professionals?id=eq.${pro.id}`, {
         method: "PATCH",
         body: JSON.stringify({ specialty: pro.specialty, badge: pro.badge, available: pro.available }),
       });
@@ -392,7 +392,7 @@ function Servicos() {
 
   const load = async () => {
     setLoading(true);
-    const data = await api("servicos?select=*&order=name");
+    const data = await api("services?select=*&order=name");
     setServices(data?.length ? data : DEMO_SERVICES);
     setLoading(false);
   };
@@ -401,7 +401,7 @@ function Servicos() {
 
   const save = async (svc) => {
     if (svc.id && !String(svc.id).startsWith("demo")) {
-      await api(`servicos?id=eq.${svc.id}`, { method: "PATCH", body: JSON.stringify(svc) });
+      await api(`services?id=eq.${svc.id}`, { method: "PATCH", body: JSON.stringify(svc) });
     } else {
       const { id, ...rest } = svc;
       await api("services", { method: "POST", body: JSON.stringify(rest) });
@@ -412,7 +412,7 @@ function Servicos() {
 
   const remove = async (id) => {
     if (!String(id).startsWith("demo")) {
-      await api(`servicos?id=eq.${id}`, { method: "DELETE" });
+      await api(`services?id=eq.${id}`, { method: "DELETE" });
     }
     setServices(prev => prev.filter(s => s.id !== id));
     setConfirmDelete(null);
@@ -420,7 +420,7 @@ function Servicos() {
 
   const toggleActive = async (svc) => {
     if (!String(svc.id).startsWith("demo")) {
-      await api(`servicos?id=eq.${svc.id}`, { method: "PATCH", body: JSON.stringify({ active: !svc.active }) });
+      await api(`services?id=eq.${svc.id}`, { method: "PATCH", body: JSON.stringify({ active: !svc.active }) });
     }
     setServices(prev => prev.map(s => s.id === svc.id ? { ...s, active: !s.active } : s));
   };
@@ -525,7 +525,7 @@ function Pedidos() {
 
   useEffect(() => {
     const load = async () => {
-      const data = await api("pedidos?select=*,servicos(name,icon),profiles!client_id(full_name,email)&order=created_at.desc");
+      const data = await api("orders?select=*,services(name,icon),profiles!client_id(full_name,email)&order=created_at.desc");
       setOrders(data?.length ? data : DEMO_ORDERS);
       setLoading(false);
     };
@@ -533,7 +533,7 @@ function Pedidos() {
   }, []);
 
   const updateStatus = async (id, status) => {
-    await api(`pedidos?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+    await api(`orders?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
   };
 
@@ -617,8 +617,8 @@ function Financeiro() {
 
   useEffect(() => {
     const load = async () => {
-      const payments = await api("pagamentos?select=*,pedidos(service_id,servicos(name)),profiles!client_id(full_name)&order=created_at.desc") || [];
-      const orders = await api("pedidos?select=price,status") || [];
+      const payments = await api("payments?select=*,orders(service_id,services(name)),profiles!client_id(full_name)&order=created_at.desc") || [];
+      const orders = await api("orders?select=price,status") || [];
       const gross = orders.reduce((s, o) => s + (o.price || 0), 0);
       setTotals({ gross, fee: gross * 0.1, payout: gross * 0.9, count: orders.length });
       setData(payments.length ? payments : DEMO_PAYMENTS);
