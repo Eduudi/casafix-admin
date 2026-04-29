@@ -7,7 +7,7 @@ const ADMIN_EMAIL  = "carloseduardodemelogonzaga@gmail.com";
 
 const api = async (path, opts = {}) => {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: {
+    headers: {  
       "Content-Type": "application/json",
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,
