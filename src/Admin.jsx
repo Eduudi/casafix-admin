@@ -475,7 +475,6 @@ function Servicos() {
         </div>
       )}
 
-      {/* Modal editar/criar serviço */}
       {modal && (
         <Modal title={String(modal.id) === "novo" ? "➕ Novo Serviço" : "✏️ Editar Serviço"} onClose={() => setModal(null)}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -503,7 +502,6 @@ function Servicos() {
         </Modal>
       )}
 
-      {/* Confirmar exclusão */}
       {confirmDelete && (
         <Modal title="🗑️ Confirmar Exclusão" onClose={() => setConfirmDelete(null)}>
           <p style={{ color: T.text, marginBottom: 8 }}>Tem certeza que deseja excluir o serviço:</p>
@@ -694,7 +692,7 @@ function Financeiro() {
   );
 }
 
-// ─── CONFIGURAÇÕES ────────────────────────────────────────────
+// ─── VERIFICAÇÃO ──────────────────────────────────────────────
 function Verificacao() {
   const [pros, setPros] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -707,28 +705,49 @@ function Verificacao() {
   const load = async () => {
     setLoading(true);
     const data = await api(`professionals?select=*,profiles(full_name,phone),professional_documents(*)&order=created_at.desc`);
-    setPros(data?.length ? data : DEMO_PENDING_PROS);
+    // Só usa demo se a API falhar completamente (null), não se retornar array vazio
+    setPros(data !== null ? data : DEMO_PENDING_PROS);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
   const approve = async (pro) => {
-    await api(`professionals?id=eq.${pro.id}`, { method: "PATCH", body: JSON.stringify({ verification_status: "approved", available: true }) });
-    await api(`professional_documents?professional_id=eq.${pro.id}`, { method: "PATCH", body: JSON.stringify({ status: "approved" }) });
+    await api(`professionals?id=eq.${pro.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ verification_status: "approved", available: true }),
+    });
+    await api(`professional_documents?professional_id=eq.${pro.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "approved" }),
+    });
+    // Atualiza state local imediatamente — sem reload que pode trazer dados demo
+    setPros(prev => prev.map(p =>
+      p.id === pro.id ? { ...p, verification_status: "approved", available: true } : p
+    ));
     setMsg(`✅ ${pro.profiles?.full_name || pro.name} aprovado!`);
     setTimeout(() => setMsg(""), 3000);
     setSelected(null);
-    load();
   };
 
   const reject = async (pro, reason) => {
-    await api(`professionals?id=eq.${pro.id}`, { method: "PATCH", body: JSON.stringify({ verification_status: "rejected", available: false, rejection_reason: reason }) });
-    await api(`professional_documents?professional_id=eq.${pro.id}`, { method: "PATCH", body: JSON.stringify({ status: "rejected", reviewer_notes: reason }) });
+    await api(`professionals?id=eq.${pro.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ verification_status: "rejected", available: false, rejection_reason: reason }),
+    });
+    await api(`professional_documents?professional_id=eq.${pro.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "rejected", reviewer_notes: reason }),
+    });
+    // Atualiza state local imediatamente — sem reload que pode trazer dados demo
+    setPros(prev => prev.map(p =>
+      p.id === pro.id ? { ...p, verification_status: "rejected", available: false, rejection_reason: reason } : p
+    ));
     setMsg(`❌ ${pro.profiles?.full_name || pro.name} rejeitado.`);
     setTimeout(() => setMsg(""), 3000);
-    setRejectModal(null); setRejectReason(""); setSelected(null);
-    load();
+    setRejectModal(null);
+    setRejectReason("");
+    setSelected(null);
   };
 
   const statusCfg = {
