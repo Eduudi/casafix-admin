@@ -7,7 +7,7 @@ const ADMIN_EMAIL  = "carloseduardodemelogonzaga@gmail.com";
 
 const api = async (path, opts = {}) => {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: {  
+    headers: {
       "Content-Type": "application/json",
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -16,7 +16,7 @@ const api = async (path, opts = {}) => {
     },
     ...opts,
   });
-  if (!r.ok) return null;  
+  if (!r.ok) return null;
   const text = await r.text();
   return text ? JSON.parse(text) : null;
 };
@@ -400,7 +400,8 @@ function Servicos() {
   useEffect(() => { load(); }, []);
 
   const save = async (svc) => {
-    const isNew = !svc.id || String(svc.id) === "novo" || String(svc.id).startsWith("demo");     if (!isNew) {
+    const isNew = !svc.id || String(svc.id) === "novo" || String(svc.id).startsWith("demo");
+    if (!isNew) {
       await api(`services?id=eq.${svc.id}`, { method: "PATCH", body: JSON.stringify(svc) });
     } else {
       const { id, ...rest } = svc;
@@ -694,6 +695,193 @@ function Financeiro() {
 }
 
 // ─── CONFIGURAÇÕES ────────────────────────────────────────────
+function Verificacao() {
+  const [pros, setPros] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [filter, setFilter] = useState("pending");
+  const [msg, setMsg] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    const data = await api(`professionals?select=*,profiles(full_name,phone),professional_documents(*)&order=created_at.desc`);
+    setPros(data?.length ? data : DEMO_PENDING_PROS);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const approve = async (pro) => {
+    await api(`professionals?id=eq.${pro.id}`, { method: "PATCH", body: JSON.stringify({ verification_status: "approved", available: true }) });
+    await api(`professional_documents?professional_id=eq.${pro.id}`, { method: "PATCH", body: JSON.stringify({ status: "approved" }) });
+    setMsg(`✅ ${pro.profiles?.full_name || pro.name} aprovado!`);
+    setTimeout(() => setMsg(""), 3000);
+    setSelected(null);
+    load();
+  };
+
+  const reject = async (pro, reason) => {
+    await api(`professionals?id=eq.${pro.id}`, { method: "PATCH", body: JSON.stringify({ verification_status: "rejected", available: false, rejection_reason: reason }) });
+    await api(`professional_documents?professional_id=eq.${pro.id}`, { method: "PATCH", body: JSON.stringify({ status: "rejected", reviewer_notes: reason }) });
+    setMsg(`❌ ${pro.profiles?.full_name || pro.name} rejeitado.`);
+    setTimeout(() => setMsg(""), 3000);
+    setRejectModal(null); setRejectReason(""); setSelected(null);
+    load();
+  };
+
+  const statusCfg = {
+    pending:      { label: "Pendente",   color: T.yellow },
+    under_review: { label: "Em análise", color: T.blue },
+    approved:     { label: "Aprovado ✓", color: T.green },
+    rejected:     { label: "Rejeitado",  color: T.red },
+  };
+
+  const filtered = pros.filter(p => filter === "todos" || (p.verification_status || "pending") === filter);
+  const counts = {
+    pending:  pros.filter(p => (p.verification_status || "pending") === "pending").length,
+    approved: pros.filter(p => p.verification_status === "approved").length,
+    rejected: pros.filter(p => p.verification_status === "rejected").length,
+  };
+
+  return (
+    <div style={{ animation: "fadeIn 0.3s ease" }}>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ color: T.text, fontSize: 22, fontWeight: 900, fontFamily: T.font }}>🔍 Verificação de Profissionais</h2>
+        <p style={{ color: T.muted, fontSize: 13, marginTop: 4 }}>Analise e aprove os cadastros de novos profissionais</p>
+      </div>
+
+      {msg && (
+        <div style={{ background: msg.startsWith("✅") ? `${T.green}18` : `${T.red}18`, border: `1px solid ${msg.startsWith("✅") ? T.green : T.red}33`, borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
+          <p style={{ color: msg.startsWith("✅") ? T.green : T.red, fontWeight: 700, margin: 0 }}>{msg}</p>
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
+        {[["⏳", counts.pending, "Aguardando", T.yellow], ["✅", counts.approved, "Aprovados", T.green], ["❌", counts.rejected, "Rejeitados", T.red]].map(([icon, count, label, color]) => (
+          <Card key={label} style={{ padding: 16, textAlign: "center" }}>
+            <p style={{ fontSize: 26, margin: "0 0 6px" }}>{icon}</p>
+            <p style={{ color, fontWeight: 900, fontSize: 24, margin: "0 0 2px" }}>{count}</p>
+            <p style={{ color: T.muted, fontSize: 11, margin: 0 }}>{label}</p>
+          </Card>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        {[["todos","Todos"],["pending","⏳ Pendentes"],["approved","✅ Aprovados"],["rejected","❌ Rejeitados"]].map(([v,l]) => (
+          <button key={v} onClick={() => setFilter(v)} style={{ background: filter===v?T.orange:T.card, color: filter===v?"#fff":T.muted, border:`1px solid ${filter===v?T.orange:T.border}`, borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:600, cursor:"pointer" }}>{l}</button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign:"center", padding:60 }}>
+          <div style={{ width:36, height:36, border:`3px solid ${T.border}`, borderTop:`3px solid ${T.orange}`, borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto" }}/>
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card style={{ textAlign:"center", padding:40 }}>
+          <p style={{ fontSize:40, marginBottom:12 }}>📭</p>
+          <p style={{ color:T.muted }}>Nenhum profissional neste status</p>
+        </Card>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          {filtered.map(pro => {
+            const st = statusCfg[pro.verification_status || "pending"];
+            const docs = pro.professional_documents?.[0] || {};
+            const docsCount = [docs.cpf_submitted, docs.rg_submitted, docs.address_proof_submitted, docs.selfie_submitted].filter(Boolean).length;
+            return (
+              <Card key={pro.id} style={{ padding:0, overflow:"hidden" }}>
+                <div style={{ padding:"16px 20px" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+                    <div style={{ width:48, height:48, borderRadius:"50%", background:`linear-gradient(135deg,${T.orange}BB,${T.orange}55)`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:16, color:"#fff", flexShrink:0 }}>
+                      {(pro.profiles?.full_name||pro.name||"?").slice(0,2).toUpperCase()}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                        <p style={{ color:T.text, fontWeight:800, fontSize:15, margin:0 }}>{pro.profiles?.full_name||pro.name||"—"}</p>
+                        <Badge text={st.label} color={st.color}/>
+                      </div>
+                      <p style={{ color:T.muted, fontSize:12, margin:"2px 0" }}>📱 {pro.profiles?.phone||"—"} · 🛠️ {pro.specialty||"—"}</p>
+                    </div>
+                  </div>
+
+                  <div style={{ background:T.surface, borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
+                    <p style={{ color:T.muted, fontSize:11, fontWeight:700, margin:"0 0 8px" }}>DOCUMENTOS ({docsCount}/4)</p>
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                      {[["CPF",docs.cpf_submitted],["RG",docs.rg_submitted],["Comprovante",docs.address_proof_submitted],["Selfie",docs.selfie_submitted]].map(([label,ok]) => (
+                        <span key={label} style={{ background:ok?`${T.green}18`:`${T.red}18`, color:ok?T.green:T.red, border:`1px solid ${ok?T.green:T.red}33`, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:700 }}>
+                          {ok?"✓":"✗"} {label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {pro.bio && <p style={{ color:T.muted, fontSize:13, marginBottom:12, lineHeight:1.4 }}>"{pro.bio}"</p>}
+
+                  {pro.verification_status === "rejected" && pro.rejection_reason && (
+                    <div style={{ background:`${T.red}12`, border:`1px solid ${T.red}33`, borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
+                      <p style={{ color:T.red, fontSize:12, margin:0 }}>Motivo: {pro.rejection_reason}</p>
+                    </div>
+                  )}
+
+                  {(pro.verification_status === "pending" || pro.verification_status === "under_review" || !pro.verification_status) && (
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={() => setSelected(selected?.id===pro.id?null:pro)} style={{ flex:1, background:`${T.blue}18`, border:`1px solid ${T.blue}33`, borderRadius:10, padding:"9px 0", color:T.blue, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                        🔍 {selected?.id===pro.id?"Fechar":"Detalhes"}
+                      </button>
+                      <button onClick={() => approve(pro)} style={{ flex:1, background:`linear-gradient(135deg,${T.green},${T.green}BB)`, border:"none", borderRadius:10, padding:"9px 0", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                        ✅ Aprovar
+                      </button>
+                      <button onClick={() => setRejectModal(pro)} style={{ flex:1, background:`${T.red}18`, border:`1px solid ${T.red}33`, borderRadius:10, padding:"9px 0", color:T.red, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                        ❌ Rejeitar
+                      </button>
+                    </div>
+                  )}
+
+                  {selected?.id === pro.id && (
+                    <div style={{ marginTop:14, borderTop:`1px solid ${T.border}`, paddingTop:14 }}>
+                      {[["Especialidade",pro.specialty],["Experiência",`${pro.experience_years||1} anos`],["Chave Pix",pro.pix_key],["Banco",pro.bank_name],["Cadastro",new Date(pro.created_at).toLocaleDateString("pt-BR")]].map(([k,v]) => (
+                        <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:`1px solid ${T.border}` }}>
+                          <span style={{ color:T.muted, fontSize:12 }}>{k}</span>
+                          <span style={{ color:T.text, fontSize:12, fontWeight:600 }}>{v||"—"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {rejectModal && (
+        <Modal title="❌ Rejeitar Profissional" onClose={() => setRejectModal(null)}>
+          <p style={{ color:T.text, marginBottom:16 }}>Informe o motivo para <strong>{rejectModal.profiles?.full_name}</strong>:</p>
+          <div style={{ marginBottom:12 }}>
+            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3} placeholder="Ex: Documentos ilegíveis, CPF inválido..."
+              style={{ width:"100%", boxSizing:"border-box", background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:"11px 14px", color:T.text, fontSize:14, outline:"none", resize:"none", fontFamily:"inherit" }}/>
+          </div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16 }}>
+            {["Documentos ilegíveis","CPF inválido","Foto da selfie incorreta","Comprovante vencido","Informações incompletas"].map(r => (
+              <button key={r} onClick={() => setRejectReason(r)} style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:20, padding:"5px 12px", color:T.muted, fontSize:11, cursor:"pointer" }}>{r}</button>
+            ))}
+          </div>
+          <div style={{ display:"flex", gap:10 }}>
+            <Btn onClick={() => setRejectModal(null)} outline color={T.muted} style={{ flex:1 }}>Cancelar</Btn>
+            <Btn onClick={() => reject(rejectModal, rejectReason)} color={T.red} disabled={!rejectReason.trim()} style={{ flex:2 }}>Confirmar Rejeição</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+const DEMO_PENDING_PROS = [
+  { id:"demo-p1", verification_status:"pending", specialty:"Elétrica Geral", experience_years:5, bio:"Eletricista com 5 anos de experiência.", pix_key:"joao@email.com", created_at:new Date().toISOString(), profiles:{ full_name:"João Pereira", phone:"(34) 99999-1111" }, professional_documents:[{ cpf_submitted:true, rg_submitted:true, address_proof_submitted:true, selfie_submitted:false }] },
+  { id:"demo-p2", verification_status:"pending", specialty:"Hidráulica", experience_years:3, bio:"Encanador especializado em consertos.", pix_key:"maria@email.com", created_at:new Date().toISOString(), profiles:{ full_name:"Maria Santos", phone:"(34) 99999-2222" }, professional_documents:[{ cpf_submitted:true, rg_submitted:true, address_proof_submitted:true, selfie_submitted:true }] },
+];
+
 function Configuracoes({ onLogout }) {
   const [saved, setSaved] = useState(false);
   const [config, setConfig] = useState({
@@ -782,6 +970,7 @@ export default function Admin() {
   const [tab, setTab] = useState("dashboard");
 
   const navItems = [
+    { id: "verificacao",   icon: "🔍", label: "Verificação" },
     { id: "dashboard",    icon: "📊", label: "Dashboard" },
     { id: "professionals", icon: "👷", label: "Profissionais" },
     { id: "services",     icon: "🛠️", label: "Serviços" },
@@ -794,6 +983,7 @@ export default function Admin() {
 
   const renderTab = () => {
     switch(tab) {
+      case "verificacao":   return <Verificacao />;
       case "dashboard":     return <Dashboard />;
       case "professionals": return <Profissionais />;
       case "services":      return <Servicos />;
