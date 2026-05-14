@@ -1,1067 +1,434 @@
 import { useState, useEffect } from "react";
 
-// ─── SUPABASE ────────────────────────────────────────────────
-const SUPABASE_URL = "https://pttbpywteivrcnvhpmxi.supabase.co";
-const SUPABASE_KEY = "sb_publishable_DHepCUr-K6nqE9YFPGtSXA_niYxTOsK";
-const ADMIN_EMAIL  = "carloseduardodemelogonzaga@gmail.com";
+// Poppins font
+const poppinsLink = document.createElement("link");
+poppinsLink.href = "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap";
+poppinsLink.rel = "stylesheet";
+document.head.appendChild(poppinsLink);
+
+const SUPA_URL = "https://pttbpywteivrcnvhpmxi.supabase.co";
+const SUPA_KEY = "sb_publishable_DHepCUr-K6nqE9YFPGtSXA_niYxTOsK";
+const ADMIN_EMAIL = "carloseduardodemelogonzaga@gmail.com";
 
 const api = async (path, opts = {}) => {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, {
     headers: {
+      apikey: SUPA_KEY,
+      Authorization: `Bearer ${SUPA_KEY}`,
       "Content-Type": "application/json",
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
       Prefer: "return=representation",
-      ...opts.headers,
     },
     ...opts,
   });
-  if (!r.ok) return null;
-  const text = await r.text();
+  if (!res.ok) return null;
+  const text = await res.text();
   return text ? JSON.parse(text) : null;
 };
 
-const signIn = async (email, password) => {
-  const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY },
-    body: JSON.stringify({ email, password }),
-  });
-  return r.json();
+const C = {
+  purple: "#6B21E8",
+  purpleDark: "#4C0FBE",
+  purpleLight: "#8B47F0",
+  purpleBg: "#F5F0FF",
+  white: "#FFFFFF",
+  gray: "#F7F7F8",
+  grayMid: "#E5E5EA",
+  text: "#1A1A2E",
+  muted: "#8B8FA8",
+  green: "#22C55E",
+  red: "#EF4444",
+  yellow: "#F59E0B",
+  sidebar: "#1A0A3C",
+  sidebarHover: "#2D1560",
 };
 
-// ─── TEMA ────────────────────────────────────────────────────
-const T = {
-  bg: "#0A0A14", surface: "#11111E", card: "#181828",
-  border: "#252540", orange: "#FF6B2B", green: "#00D68F",
-  yellow: "#FFB800", red: "#FF4757", blue: "#3D8EFF",
-  purple: "#A855F7", text: "#F0F0FA", muted: "#6868A0",
-  font: "'Georgia', serif",
-};
+const FONT = "'Poppins', 'Segoe UI', sans-serif";
 
-const css = `
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: ${T.bg}; color: ${T.text}; font-family: 'Segoe UI', system-ui, sans-serif; }
-  input, textarea, select { font-family: inherit; }
-  ::-webkit-scrollbar { width: 6px; } 
-  ::-webkit-scrollbar-track { background: ${T.surface}; }
-  ::-webkit-scrollbar-thumb { background: ${T.border}; border-radius: 3px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-`;
-
-// ─── COMPONENTES BASE ─────────────────────────────────────────
-const Btn = ({ children, onClick, color = T.orange, outline, style: s = {}, disabled, small }) => (
-  <button onClick={onClick} disabled={disabled} style={{
-    background: outline ? "transparent" : disabled ? T.border : `linear-gradient(135deg, ${color}, ${color}CC)`,
-    color: outline ? color : "#fff",
-    border: outline ? `1.5px solid ${color}55` : "none",
-    borderRadius: 10, padding: small ? "6px 14px" : "10px 20px",
-    fontWeight: 700, fontSize: small ? 12 : 14,
-    cursor: disabled ? "default" : "pointer",
-    boxShadow: outline || disabled ? "none" : `0 4px 14px ${color}33`,
-    fontFamily: "inherit", opacity: disabled ? 0.5 : 1,
-    transition: "opacity 0.15s", ...s,
-  }}>{children}</button>
-);
-
-const Badge = ({ text, color = T.orange }) => (
-  <span style={{ background: `${color}18`, color, border: `1px solid ${color}33`, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>{text}</span>
-);
-
-const Card = ({ children, style: s = {} }) => (
-  <div style={{ background: T.card, borderRadius: 16, border: `1px solid ${T.border}`, padding: 20, ...s }}>{children}</div>
-);
-
-const Modal = ({ title, onClose, children }) => (
-  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-    <div style={{ background: T.card, borderRadius: 20, border: `1px solid ${T.border}`, width: "100%", maxWidth: 500, maxHeight: "90vh", overflow: "auto", animation: "fadeIn 0.2s ease" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: `1px solid ${T.border}` }}>
-        <h3 style={{ color: T.text, fontWeight: 800, fontSize: 16 }}>{title}</h3>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", fontSize: 20 }}>✕</button>
-      </div>
-      <div style={{ padding: 24 }}>{children}</div>
-    </div>
-  </div>
-);
-
-const Field = ({ label, value, onChange, type = "text", placeholder, options, multiline }) => (
-  <div style={{ marginBottom: 14 }}>
-    <label style={{ color: T.muted, fontSize: 12, display: "block", marginBottom: 5 }}>{label}</label>
-    {multiline ? (
-      <textarea value={value} onChange={onChange} placeholder={placeholder} rows={3}
-        style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 14px", color: T.text, fontSize: 14, outline: "none", resize: "vertical" }} />
-    ) : options ? (
-      <select value={value} onChange={onChange}
-        style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 14px", color: T.text, fontSize: 14, outline: "none" }}>
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    ) : (
-      <input type={type} value={value} onChange={onChange} placeholder={placeholder}
-        style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 14px", color: T.text, fontSize: 14, outline: "none" }} />
-    )}
-  </div>
-);
-
-// ─── LOGIN ADMIN ──────────────────────────────────────────────
-function LoginAdmin({ onLogin }) {
-  const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handle = async () => {
-    if (!email || !pass) { setError("Preencha todos os campos"); return; }
-    if (email !== ADMIN_EMAIL) { setError("Acesso negado. Apenas administradores."); return; }
-    setLoading(true); setError("");
-    const res = await signIn(email, pass);
-    if (res.error) { setError("E-mail ou senha incorretos"); setLoading(false); return; }
-    onLogin({ email, token: res.access_token });
-    setLoading(false);
-  };
-
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: `radial-gradient(ellipse at top, ${T.orange}15, transparent 60%), ${T.bg}`, padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 400 }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 52, marginBottom: 10 }}>⚙️</div>
-          <h1 style={{ color: T.text, fontSize: 26, fontWeight: 900, fontFamily: T.font }}>CASAFIX Admin</h1>
-          <p style={{ color: T.muted, fontSize: 13, marginTop: 6 }}>Painel de Administração</p>
-        </div>
-        <Card>
-          <div style={{ background: `${T.orange}12`, border: `1px solid ${T.orange}33`, borderRadius: 10, padding: "10px 14px", marginBottom: 20 }}>
-            <p style={{ color: T.orange, fontSize: 12, fontWeight: 600 }}>🔐 Acesso restrito a administradores</p>
-          </div>
-          <Field label="E-mail administrativo" value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="admin@casafix.com" />
-          <Field label="Senha" value={pass} onChange={e => setPass(e.target.value)} type="password" placeholder="••••••••" />
-          {error && <div style={{ background: `${T.red}18`, border: `1px solid ${T.red}33`, borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}><p style={{ color: T.red, fontSize: 13 }}>{error}</p></div>}
-          <Btn onClick={handle} disabled={loading} style={{ width: "100%", marginTop: 4 }}>
-            {loading ? "⏳ Verificando..." : "Entrar no Painel →"}
-          </Btn>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-// ─── DASHBOARD ────────────────────────────────────────────────
-function Dashboard() {
-  const [stats, setStats] = useState({ orders: 0, pros: 0, services: 0, revenue: 0, fee: 0, pending: 0 });
-  const [recent, setRecent] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      const [orders, pros, svcs] = await Promise.all([
-        api("orders?select=price,status"),
-        api("professionals?select=id,available"),
-        api("services?select=id"),
-      ]);
-      const o = orders || [];
-      const revenue = o.reduce((s, x) => s + (x.price || 0), 0);
-      setStats({
-        orders: o.length, pros: (pros || []).length,
-        services: (svcs || []).length,
-        revenue, fee: revenue * 0.1,
-        pending: o.filter(x => x.status === "pending").length,
-      });
-      const rec = await api("orders?select=*,services(name),profiles!client_id(full_name)&order=created_at.desc&limit=5");
-      setRecent(rec || DEMO_ORDERS);
-      setLoading(false);
-    };
-    load();
-  }, []);
-
-  const statCards = [
-    { icon: "💰", label: "Receita Total", value: `R$ ${stats.revenue.toFixed(0)}`, color: T.orange },
-    { icon: "💸", label: "Taxa App (10%)", value: `R$ ${stats.fee.toFixed(0)}`, color: T.green },
-    { icon: "🛠️", label: "Total de Pedidos", value: stats.orders, color: T.blue },
-    { icon: "⏳", label: "Pendentes", value: stats.pending, color: T.yellow },
-    { icon: "👷", label: "Profissionais", value: stats.pros, color: T.purple },
-    { icon: "📋", label: "Serviços", value: stats.services, color: T.orange },
-  ];
-
-  const statusCfg = {
-    pending: { label: "Pendente", color: T.muted },
-    confirmed: { label: "Confirmado", color: T.blue },
-    in_progress: { label: "Em andamento", color: T.yellow },
-    completed: { label: "Concluído", color: T.green },
-    paid: { label: "Pago", color: T.green },
-    cancelled: { label: "Cancelado", color: T.red },
-  };
-
-  return (
-    <div style={{ animation: "fadeIn 0.3s ease" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ color: T.text, fontSize: 22, fontWeight: 900, fontFamily: T.font }}>📊 Dashboard</h2>
-        <p style={{ color: T.muted, fontSize: 13, marginTop: 4 }}>Visão geral do CASAFIX em tempo real</p>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 60 }}>
-          <div style={{ width: 40, height: 40, border: `3px solid ${T.border}`, borderTop: `3px solid ${T.orange}`, borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
-          <p style={{ color: T.muted }}>Carregando dados...</p>
-        </div>
-      ) : (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
-            {statCards.map(s => (
-              <Card key={s.label} style={{ padding: 16 }}>
-                <p style={{ fontSize: 28, marginBottom: 8 }}>{s.icon}</p>
-                <p style={{ color: s.color, fontWeight: 900, fontSize: 22, marginBottom: 4 }}>{s.value}</p>
-                <p style={{ color: T.muted, fontSize: 11 }}>{s.label}</p>
-              </Card>
-            ))}
-          </div>
-
-          <Card>
-            <h3 style={{ color: T.text, fontWeight: 800, fontSize: 15, marginBottom: 16 }}>📋 Pedidos Recentes</h3>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  {["ID", "Serviço", "Cliente", "Valor", "Status"].map(h => (
-                    <th key={h} style={{ color: T.muted, fontSize: 11, fontWeight: 600, textAlign: "left", padding: "8px 12px", borderBottom: `1px solid ${T.border}` }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(recent.length ? recent : DEMO_ORDERS).map((o, i) => {
-                  const st = statusCfg[o.status] || { label: o.status, color: T.muted };
-                  return (
-                    <tr key={i} style={{ borderBottom: `1px solid ${T.border}` }}>
-                      <td style={{ padding: "10px 12px", color: T.muted, fontSize: 12 }}>#{String(o.id || i).slice(0, 8)}</td>
-                      <td style={{ padding: "10px 12px", color: T.text, fontSize: 13 }}>{o.servicos?.name || o.service_name || "—"}</td>
-                      <td style={{ padding: "10px 12px", color: T.text, fontSize: 13 }}>{o.profiles?.full_name || o.client_name || "—"}</td>
-                      <td style={{ padding: "10px 12px", color: T.orange, fontWeight: 700, fontSize: 13 }}>R$ {o.price || o.value || 0}</td>
-                      <td style={{ padding: "10px 12px" }}><Badge text={st.label} color={st.color} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </Card>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── PROFISSIONAIS ────────────────────────────────────────────
-function Profissionais() {
-  const [pros, setPros] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("todos");
-
-  const load = async () => {
-    setLoading(true);
-    const data = await api("professionals?select=*,profiles(full_name,email,phone)&order=rating.desc");
-    setPros(data?.length ? data : DEMO_PROS);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const toggleAvailable = async (pro) => {
-    await api(`professionals?id=eq.${pro.id}`, {
-      method: "PATCH", body: JSON.stringify({ available: !pro.available }),
-    });
-    setPros(prev => prev.map(p => p.id === pro.id ? { ...p, available: !p.available } : p));
-  };
-
-  const savePro = async (pro) => {
-    if (pro.id && !String(pro.id).startsWith("demo")) {
-      await api(`professionals?id=eq.${pro.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ specialty: pro.specialty, badge: pro.badge, available: pro.available }),
-      });
-    }
-    setPros(prev => prev.map(p => p.id === pro.id ? pro : p));
-    setModal(null);
-  };
-
-  const filtered = pros.filter(p => {
-    const name = p.profiles?.full_name || p.name || "";
-    const matchSearch = name.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === "todos" || (filter === "ativos" && p.available) || (filter === "inativos" && !p.available) || (filter === "pendentes" && !p.badge);
-    return matchSearch && matchFilter;
-  });
-
-  return (
-    <div style={{ animation: "fadeIn 0.3s ease" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
-        <div>
-          <h2 style={{ color: T.text, fontSize: 22, fontWeight: 900, fontFamily: T.font }}>👷 Profissionais</h2>
-          <p style={{ color: T.muted, fontSize: 13, marginTop: 4 }}>Gerencie e libere profissionais</p>
-        </div>
-      </div>
-
-      {/* Filtros */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Buscar profissional..." style={{ flex: 1, minWidth: 200, background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: "9px 14px", color: T.text, fontSize: 13, outline: "none" }} />
-        <div style={{ display: "flex", gap: 6 }}>
-          {[["todos", "Todos"], ["ativos", "🟢 Ativos"], ["inativos", "🔴 Inativos"], ["pendentes", "⏳ Pendentes"]].map(([v, l]) => (
-            <button key={v} onClick={() => setFilter(v)} style={{ background: filter === v ? T.orange : T.card, color: filter === v ? "#fff" : T.muted, border: `1px solid ${filter === v ? T.orange : T.border}`, borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{l}</button>
-          ))}
-        </div>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 60 }}>
-          <div style={{ width: 36, height: 36, border: `3px solid ${T.border}`, borderTop: `3px solid ${T.orange}`, borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
-        </div>
-      ) : (
-        <Card style={{ padding: 0, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: T.surface }}>
-                {["Profissional", "Especialidade", "Avaliação", "Serviços", "Badge", "Status", "Ações"].map(h => (
-                  <th key={h} style={{ color: T.muted, fontSize: 11, fontWeight: 600, textAlign: "left", padding: "12px 16px", borderBottom: `1px solid ${T.border}` }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((pro, i) => (
-                <tr key={pro.id || i} style={{ borderBottom: `1px solid ${T.border}`, transition: "background 0.15s" }}>
-                  <td style={{ padding: "14px 16px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: `linear-gradient(135deg, ${pro.available ? T.green : T.muted}BB, ${pro.available ? T.green : T.muted}55)`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#fff", flexShrink: 0 }}>
-                        {(pro.profiles?.full_name || pro.name || "?").slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <p style={{ color: T.text, fontWeight: 700, fontSize: 13 }}>{pro.profiles?.full_name || pro.name || "—"}</p>
-                        <p style={{ color: T.muted, fontSize: 11 }}>{pro.profiles?.email || "—"}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: "14px 16px", color: T.text, fontSize: 13 }}>{pro.specialty || "—"}</td>
-                  <td style={{ padding: "14px 16px" }}>
-                    <span style={{ color: T.yellow, fontSize: 13, fontWeight: 700 }}>★ {pro.rating || "0"}</span>
-                  </td>
-                  <td style={{ padding: "14px 16px", color: T.text, fontSize: 13 }}>{pro.total_jobs || 0}</td>
-                  <td style={{ padding: "14px 16px" }}>
-                    {pro.badge ? <Badge text={pro.badge} color={pro.badge === "Top Profissional" ? T.yellow : T.green} /> : <span style={{ color: T.muted, fontSize: 12 }}>Sem badge</span>}
-                  </td>
-                  <td style={{ padding: "14px 16px" }}>
-                    <button onClick={() => toggleAvailable(pro)} style={{ background: pro.available ? `${T.green}18` : `${T.red}18`, color: pro.available ? T.green : T.red, border: `1px solid ${pro.available ? T.green : T.red}33`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                      {pro.available ? "🟢 Ativo" : "🔴 Inativo"}
-                    </button>
-                  </td>
-                  <td style={{ padding: "14px 16px" }}>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <Btn onClick={() => setModal({ ...pro })} small color={T.blue} outline>✏️ Editar</Btn>
-                      <Btn onClick={() => toggleAvailable(pro)} small color={pro.available ? T.red : T.green} outline>
-                        {pro.available ? "Bloquear" : "Liberar"}
-                      </Btn>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
-
-      {modal && (
-        <Modal title="✏️ Editar Profissional" onClose={() => setModal(null)}>
-          <Field label="Nome" value={modal.profiles?.full_name || modal.name || ""} onChange={() => {}} />
-          <Field label="Especialidade" value={modal.specialty || ""} onChange={e => setModal(m => ({ ...m, specialty: e.target.value }))} placeholder="Ex: Elétrica Geral" />
-          <Field label="Badge" value={modal.badge || ""} onChange={e => setModal(m => ({ ...m, badge: e.target.value }))}
-            options={[{ value: "", label: "Sem badge" }, { value: "Verificado", label: "✅ Verificado" }, { value: "Top Profissional", label: "⭐ Top Profissional" }]} />
-          <Field label="Status" value={modal.available ? "true" : "false"} onChange={e => setModal(m => ({ ...m, available: e.target.value === "true" }))}
-            options={[{ value: "true", label: "🟢 Ativo / Disponível" }, { value: "false", label: "🔴 Inativo / Bloqueado" }]} />
-          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-            <Btn onClick={() => setModal(null)} outline color={T.muted} style={{ flex: 1 }}>Cancelar</Btn>
-            <Btn onClick={() => savePro(modal)} style={{ flex: 2 }}>💾 Salvar Alterações</Btn>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-// ─── SERVIÇOS ─────────────────────────────────────────────────
-function Servicos() {
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null);
-
-  const EMPTY = { name: "", icon: "🔧", category: "Elétrica", price_min: "", price_max: "", description: "", img_url: "", active: true };
-
-  const load = async () => {
-    setLoading(true);
-    const data = await api("services?select=*&order=name");
-    setServices(data?.length ? data : DEMO_SERVICES);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const save = async (svc) => {
-    const isNew = !svc.id || String(svc.id) === "novo" || String(svc.id).startsWith("demo");
-    if (!isNew) {
-      await api(`services?id=eq.${svc.id}`, { method: "PATCH", body: JSON.stringify(svc) });
-    } else {
-      const { id, ...rest } = svc;
-      await api("services", { method: "POST", body: JSON.stringify(rest) });
-    }
-    await load();
-    setModal(null);
-  };
-
-  const remove = async (id) => {
-    if (!String(id).startsWith("demo")) {
-      await api(`services?id=eq.${id}`, { method: "DELETE" });
-    }
-    setServices(prev => prev.filter(s => s.id !== id));
-    setConfirmDelete(null);
-  };
-
-  const toggleActive = async (svc) => {
-    if (!String(svc.id).startsWith("demo")) {
-      await api(`services?id=eq.${svc.id}`, { method: "PATCH", body: JSON.stringify({ active: !svc.active }) });
-    }
-    setServices(prev => prev.map(s => s.id === svc.id ? { ...s, active: !s.active } : s));
-  };
-
-  const categories = ["Elétrica", "Hidráulica", "Instalação", "Climatização", "Geral", "Pintura", "Marcenaria"];
-
-  return (
-    <div style={{ animation: "fadeIn 0.3s ease" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
-        <div>
-          <h2 style={{ color: T.text, fontSize: 22, fontWeight: 900, fontFamily: T.font }}>🛠️ Serviços</h2>
-          <p style={{ color: T.muted, fontSize: 13, marginTop: 4 }}>Adicione, edite e gerencie serviços</p>
-        </div>
-        <Btn onClick={() => setModal({ ...EMPTY, id: "novo" })}>+ Novo Serviço</Btn>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 60 }}>
-          <div style={{ width: 36, height: 36, border: `3px solid ${T.border}`, borderTop: `3px solid ${T.orange}`, borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
-        </div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14 }}>
-          {services.map(svc => (
-            <Card key={svc.id} style={{ padding: 0, overflow: "hidden" }}>
-              <div style={{ height: 120, background: T.surface, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {svc.img_url
-                  ? <img src={svc.img_url} alt={svc.name} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }} />
-                  : <span style={{ fontSize: 48 }}>{svc.icon || "🔧"}</span>}
-                <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 6 }}>
-                  <button onClick={() => toggleActive(svc)} style={{ background: svc.active !== false ? `${T.green}CC` : `${T.red}CC`, border: "none", borderRadius: 20, padding: "3px 10px", color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
-                    {svc.active !== false ? "Ativo" : "Inativo"}
-                  </button>
-                </div>
-                <div style={{ position: "absolute", bottom: 8, left: 12 }}>
-                  <Badge text={svc.category} color={T.blue} />
-                </div>
-              </div>
-              <div style={{ padding: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <h3 style={{ color: T.text, fontWeight: 800, fontSize: 15 }}>{svc.name}</h3>
-                  <span style={{ color: T.orange, fontWeight: 900, fontSize: 16 }}>R$ {svc.price_min}</span>
-                </div>
-                <p style={{ color: T.muted, fontSize: 12, lineHeight: 1.4, marginBottom: 14 }}>{svc.description?.slice(0, 80)}...</p>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Btn onClick={() => setModal({ ...svc })} small color={T.blue} outline style={{ flex: 1 }}>✏️ Editar</Btn>
-                  <Btn onClick={() => setConfirmDelete(svc)} small color={T.red} outline>🗑️</Btn>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {modal && (
-        <Modal title={String(modal.id) === "novo" ? "➕ Novo Serviço" : "✏️ Editar Serviço"} onClose={() => setModal(null)}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div style={{ gridColumn: "1/-1" }}>
-              <Field label="Nome do Serviço" value={modal.name} onChange={e => setModal(m => ({ ...m, name: e.target.value }))} placeholder="Ex: Troca de Lâmpadas" />
-            </div>
-            <Field label="Ícone (emoji)" value={modal.icon} onChange={e => setModal(m => ({ ...m, icon: e.target.value }))} placeholder="💡" />
-            <Field label="Categoria" value={modal.category} onChange={e => setModal(m => ({ ...m, category: e.target.value }))}
-              options={categories.map(c => ({ value: c, label: c }))} />
-            <Field label="Preço Mínimo (R$)" value={modal.price_min} onChange={e => setModal(m => ({ ...m, price_min: e.target.value }))} type="number" placeholder="60" />
-            <Field label="Preço Máximo (R$)" value={modal.price_max || ""} onChange={e => setModal(m => ({ ...m, price_max: e.target.value }))} type="number" placeholder="200" />
-            <div style={{ gridColumn: "1/-1" }}>
-              <Field label="Descrição" value={modal.description} onChange={e => setModal(m => ({ ...m, description: e.target.value }))} placeholder="Descreva o serviço..." multiline />
-            </div>
-            <div style={{ gridColumn: "1/-1" }}>
-              <Field label="URL da Imagem (opcional)" value={modal.img_url || ""} onChange={e => setModal(m => ({ ...m, img_url: e.target.value }))} placeholder="https://..." />
-            </div>
-            <Field label="Status" value={modal.active !== false ? "true" : "false"} onChange={e => setModal(m => ({ ...m, active: e.target.value === "true" }))}
-              options={[{ value: "true", label: "✅ Ativo" }, { value: "false", label: "❌ Inativo" }]} />
-          </div>
-          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <Btn onClick={() => setModal(null)} outline color={T.muted} style={{ flex: 1 }}>Cancelar</Btn>
-            <Btn onClick={() => save(modal)} style={{ flex: 2 }}>💾 Salvar Serviço</Btn>
-          </div>
-        </Modal>
-      )}
-
-      {confirmDelete && (
-        <Modal title="🗑️ Confirmar Exclusão" onClose={() => setConfirmDelete(null)}>
-          <p style={{ color: T.text, marginBottom: 8 }}>Tem certeza que deseja excluir o serviço:</p>
-          <p style={{ color: T.orange, fontWeight: 700, fontSize: 16, marginBottom: 20 }}>{confirmDelete.icon} {confirmDelete.name}</p>
-          <div style={{ display: "flex", gap: 10 }}>
-            <Btn onClick={() => setConfirmDelete(null)} outline color={T.muted} style={{ flex: 1 }}>Cancelar</Btn>
-            <Btn onClick={() => remove(confirmDelete.id)} color={T.red} style={{ flex: 1 }}>Sim, excluir</Btn>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-// ─── PEDIDOS ──────────────────────────────────────────────────
-function Pedidos() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("todos");
-
-  useEffect(() => {
-    const load = async () => {
-      const data = await api("orders?select=*,services(name,icon),profiles!client_id(full_name,email)&order=created_at.desc");
-      setOrders(data?.length ? data : DEMO_ORDERS);
-      setLoading(false);
-    };
-    load();
-  }, []);
-
-  const updateStatus = async (id, status) => {
-    await api(`orders?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-  };
-
-  const statusCfg = {
-    pending:     { label: "Pendente",     color: T.muted },
-    confirmed:   { label: "Confirmado",   color: T.blue },
-    on_the_way:  { label: "A caminho",    color: T.yellow },
-    in_progress: { label: "Em andamento", color: T.yellow },
-    completed:   { label: "Concluído",    color: T.green },
-    paid:        { label: "Pago ✓",       color: T.green },
-    cancelled:   { label: "Cancelado",    color: T.red },
-  };
-
-  const filtered = filter === "todos" ? orders : orders.filter(o => o.status === filter);
-
-  return (
-    <div style={{ animation: "fadeIn 0.3s ease" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ color: T.text, fontSize: 22, fontWeight: 900, fontFamily: T.font }}>📋 Pedidos</h2>
-        <p style={{ color: T.muted, fontSize: 13, marginTop: 4 }}>Gerencie todos os pedidos da plataforma</p>
-      </div>
-
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
-        {[["todos", "Todos"], ["pending", "⏳ Pendentes"], ["confirmed", "✅ Confirmados"], ["in_progress", "🔄 Em andamento"], ["completed", "🏁 Concluídos"], ["cancelled", "❌ Cancelados"]].map(([v, l]) => (
-          <button key={v} onClick={() => setFilter(v)} style={{ background: filter === v ? T.orange : T.card, color: filter === v ? "#fff" : T.muted, border: `1px solid ${filter === v ? T.orange : T.border}`, borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{l}</button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 60 }}>
-          <div style={{ width: 36, height: 36, border: `3px solid ${T.border}`, borderTop: `3px solid ${T.orange}`, borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
-        </div>
-      ) : (
-        <Card style={{ padding: 0, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: T.surface }}>
-                {["ID", "Serviço", "Cliente", "Data", "Valor", "Status", "Ação"].map(h => (
-                  <th key={h} style={{ color: T.muted, fontSize: 11, fontWeight: 600, textAlign: "left", padding: "12px 16px", borderBottom: `1px solid ${T.border}` }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((o, i) => {
-                const st = statusCfg[o.status] || { label: o.status, color: T.muted };
-                return (
-                  <tr key={i} style={{ borderBottom: `1px solid ${T.border}` }}>
-                    <td style={{ padding: "12px 16px", color: T.muted, fontSize: 11 }}>#{String(o.id || i).slice(0, 8)}</td>
-                    <td style={{ padding: "12px 16px", color: T.text, fontSize: 13 }}>
-                      {o.servicos?.icon || ""} {o.servicos?.name || o.service_name || "—"}
-                    </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <p style={{ color: T.text, fontSize: 13 }}>{o.profiles?.full_name || o.client_name || "—"}</p>
-                      <p style={{ color: T.muted, fontSize: 11 }}>{o.profiles?.email || ""}</p>
-                    </td>
-                    <td style={{ padding: "12px 16px", color: T.muted, fontSize: 12 }}>{o.scheduled_date || o.date || "—"}</td>
-                    <td style={{ padding: "12px 16px", color: T.orange, fontWeight: 700 }}>R$ {o.price || o.value || 0}</td>
-                    <td style={{ padding: "12px 16px" }}><Badge text={st.label} color={st.color} /></td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <select value={o.status} onChange={e => updateStatus(o.id, e.target.value)}
-                        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "5px 10px", color: T.text, fontSize: 11, cursor: "pointer", outline: "none" }}>
-                        {Object.entries(statusCfg).map(([v, s]) => <option key={v} value={v}>{s.label}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-// ─── FINANCEIRO ───────────────────────────────────────────────
-function Financeiro() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [totals, setTotals] = useState({ gross: 0, fee: 0, payout: 0, count: 0 });
-
-  useEffect(() => {
-    const load = async () => {
-      const payments = await api("payments?select=*,orders(service_id,services(name)),profiles!client_id(full_name)&order=created_at.desc") || [];
-      const orders = await api("orders?select=price,status") || [];
-      const gross = orders.reduce((s, o) => s + (o.price || 0), 0);
-      setTotals({ gross, fee: gross * 0.1, payout: gross * 0.9, count: orders.length });
-      setData(payments.length ? payments : DEMO_PAYMENTS);
-      setLoading(false);
-    };
-    load();
-  }, []);
-
-  const statusCfg = { pending: { label: "Pendente", color: T.yellow }, paid: { label: "Pago", color: T.green }, failed: { label: "Falhou", color: T.red }, refunded: { label: "Reembolsado", color: T.muted } };
-
-  return (
-    <div style={{ animation: "fadeIn 0.3s ease" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ color: T.text, fontSize: 22, fontWeight: 900, fontFamily: T.font }}>💰 Financeiro</h2>
-        <p style={{ color: T.muted, fontSize: 13, marginTop: 4 }}>Receita, taxas e repasses</p>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
-        {[
-          { icon: "💰", label: "Receita Bruta", value: `R$ ${totals.gross.toFixed(2)}`, color: T.orange },
-          { icon: "💸", label: "Taxa App (10%)", value: `R$ ${totals.fee.toFixed(2)}`, color: T.green },
-          { icon: "👷", label: "Repasse Pros (90%)", value: `R$ ${totals.payout.toFixed(2)}`, color: T.blue },
-          { icon: "🛠️", label: "Total Pedidos", value: totals.count, color: T.purple },
-        ].map(s => (
-          <Card key={s.label} style={{ padding: 16, textAlign: "center" }}>
-            <p style={{ fontSize: 28, marginBottom: 8 }}>{s.icon}</p>
-            <p style={{ color: s.color, fontWeight: 900, fontSize: 20, marginBottom: 4 }}>{s.value}</p>
-            <p style={{ color: T.muted, fontSize: 11 }}>{s.label}</p>
-          </Card>
-        ))}
-      </div>
-
-      <Card style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${T.border}` }}>
-          <h3 style={{ color: T.text, fontWeight: 800 }}>Histórico de Pagamentos</h3>
-        </div>
-        {loading ? (
-          <div style={{ padding: 40, textAlign: "center" }}>
-            <div style={{ width: 36, height: 36, border: `3px solid ${T.border}`, borderTop: `3px solid ${T.orange}`, borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
-          </div>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: T.surface }}>
-                {["ID", "Cliente", "Serviço", "Valor", "Taxa App", "Pro Recebe", "Método", "Status"].map(h => (
-                  <th key={h} style={{ color: T.muted, fontSize: 11, fontWeight: 600, textAlign: "left", padding: "12px 16px", borderBottom: `1px solid ${T.border}` }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((p, i) => {
-                const st = statusCfg[p.status] || { label: p.status, color: T.muted };
-                const fee = (p.amount || 0) * 0.1;
-                return (
-                  <tr key={i} style={{ borderBottom: `1px solid ${T.border}` }}>
-                    <td style={{ padding: "12px 16px", color: T.muted, fontSize: 11 }}>#{String(p.id || i).slice(0, 8)}</td>
-                    <td style={{ padding: "12px 16px", color: T.text, fontSize: 13 }}>{p.profiles?.full_name || p.client_name || "—"}</td>
-                    <td style={{ padding: "12px 16px", color: T.text, fontSize: 13 }}>{p.pedidos?.servicos?.name || p.service_name || "—"}</td>
-                    <td style={{ padding: "12px 16px", color: T.orange, fontWeight: 700 }}>R$ {p.amount || p.value || 0}</td>
-                    <td style={{ padding: "12px 16px", color: T.green, fontWeight: 600 }}>R$ {fee.toFixed(2)}</td>
-                    <td style={{ padding: "12px 16px", color: T.blue, fontWeight: 600 }}>R$ {((p.amount || 0) - fee).toFixed(2)}</td>
-                    <td style={{ padding: "12px 16px" }}><Badge text={p.method || "pix"} color={T.purple} /></td>
-                    <td style={{ padding: "12px 16px" }}><Badge text={st.label} color={st.color} /></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </Card>
-    </div>
-  );
-}
-
-// ─── VERIFICAÇÃO ──────────────────────────────────────────────
-function Verificacao() {
-  const [pros, setPros] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState(null);
-  const [rejectModal, setRejectModal] = useState(null);
-  const [rejectReason, setRejectReason] = useState("");
-  const [filter, setFilter] = useState("pending");
-  const [msg, setMsg] = useState("");
-
-  const load = async () => {
-    setLoading(true);
-    const data = await api(`professionals?select=*,profiles(full_name,phone),professional_documents(*)&order=created_at.desc`);
-    // Só usa demo se a API falhar completamente (null), não se retornar array vazio
-    setPros(data !== null ? data : DEMO_PENDING_PROS);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const approve = async (pro) => {
-    await api(`professionals?id=eq.${pro.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ verification_status: "approved", available: true }),
-    });
-    await api(`professional_documents?professional_id=eq.${pro.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: "approved" }),
-    });
-    // Atualiza state local imediatamente — sem reload que pode trazer dados demo
-    setPros(prev => prev.map(p =>
-      p.id === pro.id ? { ...p, verification_status: "approved", available: true } : p
-    ));
-    setMsg(`✅ ${pro.profiles?.full_name || pro.name} aprovado!`);
-    setTimeout(() => setMsg(""), 3000);
-    setSelected(null);
-  };
-
-  const reject = async (pro, reason) => {
-    await api(`professionals?id=eq.${pro.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ verification_status: "rejected", available: false, rejection_reason: reason }),
-    });
-    await api(`professional_documents?professional_id=eq.${pro.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: "rejected", reviewer_notes: reason }),
-    });
-    // Atualiza state local imediatamente — sem reload que pode trazer dados demo
-    setPros(prev => prev.map(p =>
-      p.id === pro.id ? { ...p, verification_status: "rejected", available: false, rejection_reason: reason } : p
-    ));
-    setMsg(`❌ ${pro.profiles?.full_name || pro.name} rejeitado.`);
-    setTimeout(() => setMsg(""), 3000);
-    setRejectModal(null);
-    setRejectReason("");
-    setSelected(null);
-  };
-
-  const statusCfg = {
-    pending:      { label: "Pendente",   color: T.yellow },
-    under_review: { label: "Em análise", color: T.blue },
-    approved:     { label: "Aprovado ✓", color: T.green },
-    rejected:     { label: "Rejeitado",  color: T.red },
-  };
-
-  const filtered = pros.filter(p => filter === "todos" || (p.verification_status || "pending") === filter);
-  const counts = {
-    pending:  pros.filter(p => (p.verification_status || "pending") === "pending").length,
-    approved: pros.filter(p => p.verification_status === "approved").length,
-    rejected: pros.filter(p => p.verification_status === "rejected").length,
-  };
-
-  return (
-    <div style={{ animation: "fadeIn 0.3s ease" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ color: T.text, fontSize: 22, fontWeight: 900, fontFamily: T.font }}>🔍 Verificação de Profissionais</h2>
-        <p style={{ color: T.muted, fontSize: 13, marginTop: 4 }}>Analise e aprove os cadastros de novos profissionais</p>
-      </div>
-
-      {msg && (
-        <div style={{ background: msg.startsWith("✅") ? `${T.green}18` : `${T.red}18`, border: `1px solid ${msg.startsWith("✅") ? T.green : T.red}33`, borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
-          <p style={{ color: msg.startsWith("✅") ? T.green : T.red, fontWeight: 700, margin: 0 }}>{msg}</p>
-        </div>
-      )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-        {[["⏳", counts.pending, "Aguardando", T.yellow], ["✅", counts.approved, "Aprovados", T.green], ["❌", counts.rejected, "Rejeitados", T.red]].map(([icon, count, label, color]) => (
-          <Card key={label} style={{ padding: 16, textAlign: "center" }}>
-            <p style={{ fontSize: 26, margin: "0 0 6px" }}>{icon}</p>
-            <p style={{ color, fontWeight: 900, fontSize: 24, margin: "0 0 2px" }}>{count}</p>
-            <p style={{ color: T.muted, fontSize: 11, margin: 0 }}>{label}</p>
-          </Card>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
-        {[["todos","Todos"],["pending","⏳ Pendentes"],["approved","✅ Aprovados"],["rejected","❌ Rejeitados"]].map(([v,l]) => (
-          <button key={v} onClick={() => setFilter(v)} style={{ background: filter===v?T.orange:T.card, color: filter===v?"#fff":T.muted, border:`1px solid ${filter===v?T.orange:T.border}`, borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:600, cursor:"pointer" }}>{l}</button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign:"center", padding:60 }}>
-          <div style={{ width:36, height:36, border:`3px solid ${T.border}`, borderTop:`3px solid ${T.orange}`, borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto" }}/>
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card style={{ textAlign:"center", padding:40 }}>
-          <p style={{ fontSize:40, marginBottom:12 }}>📭</p>
-          <p style={{ color:T.muted }}>Nenhum profissional neste status</p>
-        </Card>
-      ) : (
-        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          {filtered.map(pro => {
-            const st = statusCfg[pro.verification_status || "pending"];
-            const docs = pro.professional_documents?.[0] || {};
-            const docsCount = [docs.cpf_submitted, docs.rg_submitted, docs.address_proof_submitted, docs.selfie_submitted].filter(Boolean).length;
-            return (
-              <Card key={pro.id} style={{ padding:0, overflow:"hidden" }}>
-                <div style={{ padding:"16px 20px" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
-                    <div style={{ width:48, height:48, borderRadius:"50%", background:`linear-gradient(135deg,${T.orange}BB,${T.orange}55)`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:16, color:"#fff", flexShrink:0 }}>
-                      {(pro.profiles?.full_name||pro.name||"?").slice(0,2).toUpperCase()}
-                    </div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                        <p style={{ color:T.text, fontWeight:800, fontSize:15, margin:0 }}>{pro.profiles?.full_name||pro.name||"—"}</p>
-                        <Badge text={st.label} color={st.color}/>
-                      </div>
-                      <p style={{ color:T.muted, fontSize:12, margin:"2px 0" }}>📱 {pro.profiles?.phone||"—"} · 🛠️ {pro.specialty||"—"}</p>
-                    </div>
-                  </div>
-
-                  <div style={{ background:T.surface, borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
-                    <p style={{ color:T.muted, fontSize:11, fontWeight:700, margin:"0 0 8px" }}>DOCUMENTOS ({docsCount}/4)</p>
-                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                      {[["CPF",docs.cpf_submitted],["RG",docs.rg_submitted],["Comprovante",docs.address_proof_submitted],["Selfie",docs.selfie_submitted]].map(([label,ok]) => (
-                        <span key={label} style={{ background:ok?`${T.green}18`:`${T.red}18`, color:ok?T.green:T.red, border:`1px solid ${ok?T.green:T.red}33`, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:700 }}>
-                          {ok?"✓":"✗"} {label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {pro.bio && <p style={{ color:T.muted, fontSize:13, marginBottom:12, lineHeight:1.4 }}>"{pro.bio}"</p>}
-
-                  {pro.verification_status === "rejected" && pro.rejection_reason && (
-                    <div style={{ background:`${T.red}12`, border:`1px solid ${T.red}33`, borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
-                      <p style={{ color:T.red, fontSize:12, margin:0 }}>Motivo: {pro.rejection_reason}</p>
-                    </div>
-                  )}
-
-                  {(pro.verification_status === "pending" || pro.verification_status === "under_review" || !pro.verification_status) && (
-                    <div style={{ display:"flex", gap:8 }}>
-                      <button onClick={() => setSelected(selected?.id===pro.id?null:pro)} style={{ flex:1, background:`${T.blue}18`, border:`1px solid ${T.blue}33`, borderRadius:10, padding:"9px 0", color:T.blue, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-                        🔍 {selected?.id===pro.id?"Fechar":"Detalhes"}
-                      </button>
-                      <button onClick={() => approve(pro)} style={{ flex:1, background:`linear-gradient(135deg,${T.green},${T.green}BB)`, border:"none", borderRadius:10, padding:"9px 0", color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>
-                        ✅ Aprovar
-                      </button>
-                      <button onClick={() => setRejectModal(pro)} style={{ flex:1, background:`${T.red}18`, border:`1px solid ${T.red}33`, borderRadius:10, padding:"9px 0", color:T.red, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-                        ❌ Rejeitar
-                      </button>
-                    </div>
-                  )}
-
-                  {selected?.id === pro.id && (
-                    <div style={{ marginTop:14, borderTop:`1px solid ${T.border}`, paddingTop:14 }}>
-                      {[["Especialidade",pro.specialty],["Experiência",`${pro.experience_years||1} anos`],["Chave Pix",pro.pix_key],["Banco",pro.bank_name],["Cadastro",new Date(pro.created_at).toLocaleDateString("pt-BR")]].map(([k,v]) => (
-                        <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:`1px solid ${T.border}` }}>
-                          <span style={{ color:T.muted, fontSize:12 }}>{k}</span>
-                          <span style={{ color:T.text, fontSize:12, fontWeight:600 }}>{v||"—"}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {rejectModal && (
-        <Modal title="❌ Rejeitar Profissional" onClose={() => setRejectModal(null)}>
-          <p style={{ color:T.text, marginBottom:16 }}>Informe o motivo para <strong>{rejectModal.profiles?.full_name}</strong>:</p>
-          <div style={{ marginBottom:12 }}>
-            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3} placeholder="Ex: Documentos ilegíveis, CPF inválido..."
-              style={{ width:"100%", boxSizing:"border-box", background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:"11px 14px", color:T.text, fontSize:14, outline:"none", resize:"none", fontFamily:"inherit" }}/>
-          </div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16 }}>
-            {["Documentos ilegíveis","CPF inválido","Foto da selfie incorreta","Comprovante vencido","Informações incompletas"].map(r => (
-              <button key={r} onClick={() => setRejectReason(r)} style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:20, padding:"5px 12px", color:T.muted, fontSize:11, cursor:"pointer" }}>{r}</button>
-            ))}
-          </div>
-          <div style={{ display:"flex", gap:10 }}>
-            <Btn onClick={() => setRejectModal(null)} outline color={T.muted} style={{ flex:1 }}>Cancelar</Btn>
-            <Btn onClick={() => reject(rejectModal, rejectReason)} color={T.red} disabled={!rejectReason.trim()} style={{ flex:2 }}>Confirmar Rejeição</Btn>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-const DEMO_PENDING_PROS = [
-  { id:"demo-p1", verification_status:"pending", specialty:"Elétrica Geral", experience_years:5, bio:"Eletricista com 5 anos de experiência.", pix_key:"joao@email.com", created_at:new Date().toISOString(), profiles:{ full_name:"João Pereira", phone:"(34) 99999-1111" }, professional_documents:[{ cpf_submitted:true, rg_submitted:true, address_proof_submitted:true, selfie_submitted:false }] },
-  { id:"demo-p2", verification_status:"pending", specialty:"Hidráulica", experience_years:3, bio:"Encanador especializado em consertos.", pix_key:"maria@email.com", created_at:new Date().toISOString(), profiles:{ full_name:"Maria Santos", phone:"(34) 99999-2222" }, professional_documents:[{ cpf_submitted:true, rg_submitted:true, address_proof_submitted:true, selfie_submitted:true }] },
-];
-
-function Configuracoes({ onLogout }) {
-  const [saved, setSaved] = useState(false);
-  const [config, setConfig] = useState({
-    appName: "CASAFIX",
-    appFee: "10",
-    supportEmail: ADMIN_EMAIL,
-    welcomeMsg: "Serviços residenciais na palma da mão",
-    maxRadius: "10",
-  });
-
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
-  const f = k => e => setConfig(c => ({ ...c, [k]: e.target.value }));
-
-  return (
-    <div style={{ animation: "fadeIn 0.3s ease", maxWidth: 600 }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ color: T.text, fontSize: 22, fontWeight: 900, fontFamily: T.font }}>⚙️ Configurações</h2>
-        <p style={{ color: T.muted, fontSize: 13, marginTop: 4 }}>Configurações gerais da plataforma</p>
-      </div>
-
-      <Card style={{ marginBottom: 16 }}>
-        <h3 style={{ color: T.text, fontWeight: 800, marginBottom: 16 }}>🔧 Configurações Gerais</h3>
-        <Field label="Nome do App" value={config.appName} onChange={f("appName")} />
-        <Field label="Slogan / Mensagem de boas-vindas" value={config.welcomeMsg} onChange={f("welcomeMsg")} />
-        <Field label="E-mail de suporte" value={config.supportEmail} onChange={f("supportEmail")} type="email" />
-      </Card>
-
-      <Card style={{ marginBottom: 16 }}>
-        <h3 style={{ color: T.text, fontWeight: 800, marginBottom: 16 }}>💰 Configurações Financeiras</h3>
-        <Field label="Taxa do App (%)" value={config.appFee} onChange={f("appFee")} type="number" />
-        <div style={{ background: `${T.orange}12`, border: `1px solid ${T.orange}33`, borderRadius: 10, padding: 12 }}>
-          <p style={{ color: T.orange, fontSize: 12 }}>💡 A taxa atual é de <strong>{config.appFee}%</strong> sobre cada serviço. O profissional recebe <strong>{100 - parseInt(config.appFee)}%</strong>.</p>
-        </div>
-      </Card>
-
-      <Card style={{ marginBottom: 16 }}>
-        <h3 style={{ color: T.text, fontWeight: 800, marginBottom: 16 }}>📍 Configurações de Localização</h3>
-        <Field label="Raio máximo de busca (km)" value={config.maxRadius} onChange={f("maxRadius")} type="number" />
-      </Card>
-
-      <Card style={{ marginBottom: 16 }}>
-        <h3 style={{ color: T.text, fontWeight: 800, marginBottom: 16 }}>🗄️ Banco de Dados</h3>
-        <div style={{ background: `${T.green}12`, border: `1px solid ${T.green}33`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
-          <p style={{ color: T.green, fontSize: 12, fontWeight: 700 }}>✅ Conectado ao Supabase</p>
-          <p style={{ color: T.muted, fontSize: 11, marginTop: 4, fontFamily: "monospace" }}>pttbpywteivrcnvhpmxi.supabase.co</p>
-        </div>
-      </Card>
-
-      <div style={{ display: "flex", gap: 10 }}>
-        <Btn onClick={save} style={{ flex: 1 }}>
-          {saved ? "✅ Salvo!" : "💾 Salvar Configurações"}
-        </Btn>
-        <Btn onClick={onLogout} color={T.red} outline>🚪 Sair</Btn>
-      </div>
-    </div>
-  );
-}
-
-// ─── DEMO DATA ────────────────────────────────────────────────
-const DEMO_PROS = [
-  { id: "demo-1", name: "Carlos Silva", specialty: "Elétrica Geral", rating: 4.9, total_jobs: 312, available: true, badge: "Top Profissional", profiles: { full_name: "Carlos Silva", email: "carlos@email.com" } },
-  { id: "demo-2", name: "Marcos Oliveira", specialty: "Instalações", rating: 4.8, total_jobs: 198, available: true, badge: "Verificado", profiles: { full_name: "Marcos Oliveira", email: "marcos@email.com" } },
-  { id: "demo-3", name: "Roberto Souza", specialty: "Hidráulica", rating: 4.7, total_jobs: 145, available: false, badge: null, profiles: { full_name: "Roberto Souza", email: "roberto@email.com" } },
-];
-const DEMO_SERVICES = [
-  { id: "demo-1", name: "Troca de Lâmpadas", icon: "💡", price_min: 60, category: "Elétrica", description: "Substituição de lâmpadas LED, fluorescentes ou comuns", active: true },
-  { id: "demo-2", name: "Instalação de TV", icon: "📺", price_min: 120, category: "Instalação", description: "Fixação em parede com suporte articulado ou fixo", active: true },
-  { id: "demo-3", name: "Ar Condicionado", icon: "❄️", price_min: 250, category: "Climatização", description: "Instalação completa de split com suporte", active: true },
-  { id: "demo-4", name: "Chuveiro Elétrico", icon: "🚿", price_min: 150, category: "Hidráulica", description: "Troca ou instalação de chuveiro elétrico", active: true },
-  { id: "demo-5", name: "Tomadas & Interruptores", icon: "🔌", price_min: 80, category: "Elétrica", description: "Instalação ou troca de tomadas e interruptores", active: true },
-  { id: "demo-6", name: "Marido de Aluguel", icon: "🔧", price_min: 90, category: "Geral", description: "Serviços gerais: quadros, móveis, reparos", active: true },
-];
-const DEMO_ORDERS = [
-  { id: "demo-1", service_name: "Troca de Lâmpadas", client_name: "Ana Paula", scheduled_date: "14/04", price: 60, status: "confirmed", servicos: { name: "Troca de Lâmpadas", icon: "💡" }, profiles: { full_name: "Ana Paula", email: "ana@email.com" } },
-  { id: "demo-2", service_name: "Ar Condicionado", client_name: "João R.", scheduled_date: "12/04", price: 250, status: "in_progress", servicos: { name: "Ar Condicionado", icon: "❄️" }, profiles: { full_name: "João R.", email: "joao@email.com" } },
-  { id: "demo-3", service_name: "Lâmpadas", client_name: "Maria S.", scheduled_date: "10/04", price: 60, status: "paid", servicos: { name: "Lâmpadas", icon: "💡" }, profiles: { full_name: "Maria S.", email: "maria@email.com" } },
-];
-const DEMO_PAYMENTS = [
-  { id: "demo-1", client_name: "Ana Paula", service_name: "Troca de Lâmpadas", amount: 60, method: "pix", status: "paid" },
-  { id: "demo-2", client_name: "João R.", service_name: "Ar Condicionado", amount: 250, method: "credit_card", status: "pending" },
-];
-
-// ─── APP PRINCIPAL ────────────────────────────────────────────
 export default function Admin() {
-  const [user, setUser] = useState(null);
+  const [authed, setAuthed] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [loginMsg, setLoginMsg] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [tab, setTab] = useState("dashboard");
+  const [services, setServices] = useState([]);
+  const [professionals, setProfessionals] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [modal, setModal] = useState(null);
+  const [svcForm, setSvcForm] = useState({ id: null, name: "", icon: "🔧", category: "Geral", price_min: "", description: "" });
+  const [toast, setToast] = useState("");
 
-  const navItems = [
-    { id: "verificacao",   icon: "🔍", label: "Verificação" },
-    { id: "dashboard",    icon: "📊", label: "Dashboard" },
-    { id: "professionals", icon: "👷", label: "Profissionais" },
-    { id: "services",     icon: "🛠️", label: "Serviços" },
-    { id: "orders",      icon: "📋", label: "Pedidos" },
-    { id: "financeiro",   icon: "💰", label: "Financeiro" },
-    { id: "config",       icon: "⚙️", label: "Config" },
-  ];
+  useEffect(() => {
+    const saved = sessionStorage.getItem("ela_admin");
+    if (saved) setAuthed(true);
+  }, []);
 
-  if (!user) return <LoginAdmin onLogin={setUser} />;
+  useEffect(() => {
+    if (authed) loadAll();
+  }, [authed]);
 
-  const renderTab = () => {
-    switch(tab) {
-      case "verificacao":   return <Verificacao />;
-      case "dashboard":     return <Dashboard />;
-      case "professionals": return <Profissionais />;
-      case "services":      return <Servicos />;
-      case "orders":       return <Pedidos />;
-      case "financeiro":    return <Financeiro />;
-      case "config":        return <Configuracoes onLogout={() => setUser(null)} />;
-      default:              return <Dashboard />;
-    }
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
   };
 
-  return (
-    <>
-      <style>{css}</style>
-      <div style={{ display: "flex", minHeight: "100vh" }}>
-        {/* Sidebar */}
-        <div style={{ width: 220, background: T.surface, borderRight: `1px solid ${T.border}`, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0 }}>
-          <div style={{ padding: "24px 20px", borderBottom: `1px solid ${T.border}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 28 }}>⚙️</span>
-              <div>
-                <h1 style={{ color: T.text, fontSize: 16, fontWeight: 900, fontFamily: T.font }}>CASAFIX</h1>
-                <p style={{ color: T.orange, fontSize: 11, fontWeight: 700 }}>Admin Panel</p>
-              </div>
-            </div>
+  const loadAll = async () => {
+    setLoading(true);
+    const [svcs, pros, ords] = await Promise.all([
+      api("services?select=*&order=name"),
+      api("professionals?select=*&order=name"),
+      api("orders?select=*&order=id.desc&limit=20"),
+    ]);
+    setServices(svcs || []);
+    setProfessionals(pros || []);
+    setOrders(ords || []);
+    setLoading(false);
+  };
+
+  const doLogin = async () => {
+    setLoginLoading(true);
+    setLoginMsg("");
+    try {
+      const res = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: { apikey: SUPA_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginForm.email, password: loginForm.password }),
+      });
+      const data = await res.json();
+      if (data.access_token && loginForm.email === ADMIN_EMAIL) {
+        sessionStorage.setItem("ela_admin", "1");
+        setAuthed(true);
+      } else if (data.access_token) {
+        setLoginMsg("Acesso negado. Apenas administradores.");
+      } else {
+        setLoginMsg("E-mail ou senha incorretos.");
+      }
+    } catch { setLoginMsg("Erro de conexão."); }
+    setLoginLoading(false);
+  };
+
+  const saveService = async () => {
+    const isNew = !svcForm.id || String(svcForm.id) === "novo";
+    if (isNew) {
+      const { id, ...rest } = svcForm;
+      await api("services", { method: "POST", body: JSON.stringify({ ...rest, price_min: Number(rest.price_min) }) });
+    } else {
+      await api(`services?id=eq.${svcForm.id}`, { method: "PATCH", body: JSON.stringify({ ...svcForm, price_min: Number(svcForm.price_min) }) });
+    }
+    await loadAll();
+    setModal(null);
+    showToast(isNew ? "Serviço criado!" : "Serviço atualizado!");
+  };
+
+  const deleteService = async (id) => {
+    if (!window.confirm("Excluir este serviço?")) return;
+    await api(`services?id=eq.${id}`, { method: "DELETE" });
+    await loadAll();
+    showToast("Serviço excluído.");
+  };
+
+  const updateProfessional = async (id, data) => {
+    await api(`professionals?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(data) });
+    await loadAll();
+    showToast("Profissional atualizado!");
+  };
+
+  const updateOrder = async (id, status) => {
+    await api(`orders?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+    await loadAll();
+    showToast("Pedido atualizado!");
+  };
+
+  const revenue = orders.reduce((s, o) => s + (Number(o.total) || 0), 0);
+  const fee = Math.round(revenue * 0.1);
+
+  const s = {
+    app: { display: "flex", minHeight: "100vh", fontFamily: FONT, background: C.gray },
+    sidebar: { width: 240, background: C.sidebar, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 200 },
+    sidebarLogo: { padding: "28px 24px 20px", borderBottom: "1px solid #ffffff15" },
+    sidebarLogoTitle: { color: C.white, fontWeight: 800, fontSize: 22, fontFamily: FONT },
+    sidebarLogoSub: { color: "#ffffff55", fontSize: 12, fontWeight: 300, fontFamily: FONT },
+    sidebarNav: { flex: 1, padding: "16px 12px" },
+    sidebarBtn: (active) => ({ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px", border: "none", borderRadius: 12, background: active ? C.purple : "transparent", color: active ? C.white : "#ffffff88", fontWeight: active ? 700 : 400, fontSize: 14, cursor: "pointer", marginBottom: 4, fontFamily: FONT, textAlign: "left" }),
+    main: { marginLeft: 240, flex: 1, display: "flex", flexDirection: "column" },
+    header: { background: C.white, borderBottom: `1px solid ${C.grayMid}`, padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 },
+    headerTitle: { fontWeight: 800, fontSize: 20, color: C.text, fontFamily: FONT },
+    content: { padding: 32 },
+    card: { background: C.white, borderRadius: 16, padding: 24, boxShadow: "0 2px 12px #0000000a", marginBottom: 24 },
+    statCard: { background: C.white, borderRadius: 16, padding: 20, boxShadow: "0 2px 12px #0000000a", flex: 1 },
+    btn: (bg = C.purple, color = C.white) => ({ background: bg, color, border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: FONT }),
+    input: { background: C.gray, border: `1.5px solid ${C.grayMid}`, borderRadius: 10, padding: "11px 14px", color: C.text, fontSize: 14, width: "100%", boxSizing: "border-box", fontFamily: FONT },
+    th: { padding: "12px 16px", color: C.muted, fontWeight: 600, fontSize: 13, textAlign: "left", borderBottom: `1px solid ${C.grayMid}` },
+    td: { padding: "14px 16px", fontSize: 14, borderBottom: `1px solid ${C.grayMid}` },
+    badge: (color) => ({ background: color + "18", color, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700, display: "inline-block" }),
+  };
+
+  // LOGIN
+  if (!authed) {
+    return (
+      <div style={{ minHeight: "100vh", background: `linear-gradient(135deg, ${C.purpleDark} 0%, ${C.purple} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT }}>
+        {toast && <div style={{ position: "fixed", top: 24, right: 24, background: C.green, color: C.white, borderRadius: 12, padding: "12px 24px", fontWeight: 700, zIndex: 999 }}>{toast}</div>}
+        <div style={{ background: C.white, borderRadius: 24, padding: 40, width: "100%", maxWidth: 400, boxShadow: "0 20px 60px #00000030" }}>
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>🏠</div>
+            <div style={{ fontWeight: 800, fontSize: 26, color: C.purple, fontFamily: FONT }}>ElaResolve</div>
+            <div style={{ color: C.muted, fontSize: 13, fontWeight: 300, fontFamily: FONT }}>Painel Administrativo</div>
           </div>
-
-          <nav style={{ flex: 1, padding: "16px 12px" }}>
-            {navItems.map(item => (
-              <button key={item.id} onClick={() => setTab(item.id)} style={{
-                width: "100%", display: "flex", alignItems: "center", gap: 10,
-                background: tab === item.id ? `${T.orange}18` : "transparent",
-                color: tab === item.id ? T.orange : T.muted,
-                border: tab === item.id ? `1px solid ${T.orange}33` : "1px solid transparent",
-                borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: tab === item.id ? 700 : 500,
-                cursor: "pointer", marginBottom: 4, textAlign: "left", transition: "all 0.15s",
-              }}>
-                <span style={{ fontSize: 16 }}>{item.icon}</span>
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          <div style={{ padding: "16px 20px", borderTop: `1px solid ${T.border}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${T.orange}BB, ${T.orange}55)`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, color: "#fff" }}>AD</div>
-              <div>
-                <p style={{ color: T.text, fontSize: 12, fontWeight: 700 }}>Admin</p>
-                <p style={{ color: T.muted, fontSize: 10 }}>carloseduardo...</p>
-              </div>
-            </div>
-            <button onClick={() => setUser(null)} style={{ width: "100%", background: `${T.red}18`, color: T.red, border: `1px solid ${T.red}33`, borderRadius: 8, padding: "7px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>🚪 Sair</button>
-          </div>
-        </div>
-
-        {/* Conteúdo */}
-        <div style={{ marginLeft: 220, flex: 1, padding: 32, minHeight: "100vh" }}>
-          {renderTab()}
+          {loginMsg && <div style={{ background: C.red + "18", color: C.red, borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 14, fontWeight: 600 }}>{loginMsg}</div>}
+          <input style={{ ...s.input, marginBottom: 12 }} placeholder="E-mail admin" type="email" value={loginForm.email} onChange={e => setLoginForm({ ...loginForm, email: e.target.value })} />
+          <input style={{ ...s.input, marginBottom: 20 }} placeholder="Senha" type="password" value={loginForm.password} onChange={e => setLoginForm({ ...loginForm, password: e.target.value })} onKeyDown={e => e.key === "Enter" && doLogin()} />
+          <button style={{ ...s.btn(), width: "100%", padding: "14px", fontSize: 15 }} onClick={doLogin} disabled={loginLoading}>
+            {loginLoading ? "Entrando..." : "Entrar no painel"}
+          </button>
         </div>
       </div>
-    </>
+    );
+  }
+
+  const TABS = [
+    { id: "dashboard", icon: "📊", label: "Dashboard" },
+    { id: "services", icon: "🛠️", label: "Serviços" },
+    { id: "professionals", icon: "👷", label: "Profissionais" },
+    { id: "orders", icon: "📋", label: "Pedidos" },
+  ];
+
+  return (
+    <div style={s.app}>
+      {toast && <div style={{ position: "fixed", top: 24, right: 24, background: C.green, color: C.white, borderRadius: 12, padding: "12px 24px", fontWeight: 700, zIndex: 999, fontFamily: FONT }}>{toast}</div>}
+
+      {/* SIDEBAR */}
+      <aside style={s.sidebar}>
+        <div style={s.sidebarLogo}>
+          <div style={s.sidebarLogoTitle}>🏠 ElaResolve</div>
+          <div style={s.sidebarLogoSub}>Cuidado & Confiança</div>
+        </div>
+        <nav style={s.sidebarNav}>
+          {TABS.map(t => (
+            <button key={t.id} style={s.sidebarBtn(tab === t.id)} onClick={() => setTab(t.id)}>
+              <span style={{ fontSize: 18 }}>{t.icon}</span>
+              {t.label}
+            </button>
+          ))}
+        </nav>
+        <div style={{ padding: "16px 24px", borderTop: "1px solid #ffffff15" }}>
+          <div style={{ color: "#ffffff66", fontSize: 12, marginBottom: 8, fontFamily: FONT }}>Admin</div>
+          <div style={{ color: C.white, fontSize: 13, fontWeight: 600, fontFamily: FONT, marginBottom: 12 }}>Carlos Eduardo</div>
+          <button style={{ ...s.btn("#ffffff18", "#ffffff88"), width: "100%", fontSize: 13 }} onClick={() => { sessionStorage.removeItem("ela_admin"); setAuthed(false); }}>
+            Sair
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN */}
+      <main style={s.main}>
+        <header style={s.header}>
+          <div style={s.headerTitle}>{TABS.find(t => t.id === tab)?.icon} {TABS.find(t => t.id === tab)?.label}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button style={s.btn()} onClick={loadAll} disabled={loading}>{loading ? "Carregando..." : "↻ Atualizar"}</button>
+          </div>
+        </header>
+
+        <div style={s.content}>
+
+          {/* DASHBOARD */}
+          {tab === "dashboard" && (
+            <div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+                {[
+                  { label: "Receita Total", value: `R$${revenue.toLocaleString()}`, icon: "💰", color: C.purple },
+                  { label: "Taxa da Plataforma", value: `R$${fee.toLocaleString()}`, icon: "📈", color: C.green },
+                  { label: "Total de Pedidos", value: orders.length, icon: "📋", color: C.yellow },
+                  { label: "Profissionais", value: professionals.length, icon: "👷", color: C.purpleLight },
+                ].map(stat => (
+                  <div key={stat.label} style={s.statCard}>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>{stat.icon}</div>
+                    <div style={{ color: C.muted, fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{stat.label}</div>
+                    <div style={{ color: stat.color, fontWeight: 800, fontSize: 24, fontFamily: FONT }}>{stat.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                <div style={s.card}>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16, fontFamily: FONT }}>📋 Pedidos Recentes</div>
+                  {orders.length === 0 ? (
+                    <div style={{ color: C.muted, textAlign: "center", padding: 24 }}>Nenhum pedido ainda</div>
+                  ) : orders.slice(0, 5).map((o, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: `1px solid ${C.grayMid}` }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{o.service_name || "Serviço"}</div>
+                        <div style={{ color: C.muted, fontSize: 12 }}>{o.user_email || "—"}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontWeight: 700, color: C.purple }}>R${o.total || 0}</div>
+                        <span style={s.badge(o.status === "completed" ? C.green : o.status === "cancelled" ? C.red : C.yellow)}>
+                          {o.status === "completed" ? "Concluído" : o.status === "cancelled" ? "Cancelado" : "Pendente"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={s.card}>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16, fontFamily: FONT }}>🛠️ Serviços Cadastrados</div>
+                  {services.length === 0 ? (
+                    <div style={{ color: C.muted, textAlign: "center", padding: 24 }}>Nenhum serviço cadastrado</div>
+                  ) : services.slice(0, 6).map(sv => (
+                    <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.grayMid}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 20 }}>{sv.icon || "🔧"}</span>
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>{sv.name}</span>
+                      </div>
+                      <span style={{ color: C.purple, fontWeight: 700 }}>R${sv.price_min}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SERVICES */}
+          {tab === "services" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div style={{ color: C.muted, fontSize: 14 }}>{services.length} serviço(s) cadastrado(s)</div>
+                <button style={s.btn()} onClick={() => { setSvcForm({ id: null, name: "", icon: "🔧", category: "Geral", price_min: "", description: "" }); setModal("service"); }}>
+                  + Novo Serviço
+                </button>
+              </div>
+              <div style={s.card}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      {["Ícone", "Nome", "Categoria", "Preço mín.", "Ações"].map(h => <th key={h} style={s.th}>{h}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {services.length === 0 ? (
+                      <tr><td colSpan={5} style={{ ...s.td, textAlign: "center", color: C.muted, padding: 40 }}>Nenhum serviço cadastrado</td></tr>
+                    ) : services.map(sv => (
+                      <tr key={sv.id}>
+                        <td style={s.td}><span style={{ fontSize: 24 }}>{sv.icon || "🔧"}</span></td>
+                        <td style={{ ...s.td, fontWeight: 600 }}>{sv.name}</td>
+                        <td style={s.td}><span style={{ background: C.purpleBg, color: C.purple, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 600 }}>{sv.category}</span></td>
+                        <td style={{ ...s.td, fontWeight: 700, color: C.purple }}>R${sv.price_min}</td>
+                        <td style={s.td}>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button style={s.btn(C.purpleBg, C.purple)} onClick={() => { setSvcForm({ id: sv.id, name: sv.name, icon: sv.icon || "🔧", category: sv.category || "Geral", price_min: sv.price_min, description: sv.description || "" }); setModal("service"); }}>Editar</button>
+                            <button style={s.btn(C.red + "18", C.red)} onClick={() => deleteService(sv.id)}>Excluir</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* PROFESSIONALS */}
+          {tab === "professionals" && (
+            <div style={s.card}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    {["Nome", "Especialidade", "Avaliação", "Status", "Verificação", "Ações"].map(h => <th key={h} style={s.th}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {professionals.length === 0 ? (
+                    <tr><td colSpan={6} style={{ ...s.td, textAlign: "center", color: C.muted, padding: 40 }}>Nenhum profissional cadastrado</td></tr>
+                  ) : professionals.map(p => (
+                    <tr key={p.id}>
+                      <td style={{ ...s.td, fontWeight: 600 }}>{p.name}</td>
+                      <td style={s.td}>{p.specialty || "—"}</td>
+                      <td style={s.td}>⭐ {p.rating || "—"}</td>
+                      <td style={s.td}>
+                        <span style={s.badge(p.available ? C.green : C.red)}>
+                          {p.available ? "Disponível" : "Indisponível"}
+                        </span>
+                      </td>
+                      <td style={s.td}>
+                        <span style={s.badge(p.verification_status === "approved" ? C.green : p.verification_status === "rejected" ? C.red : C.yellow)}>
+                          {p.verification_status === "approved" ? "✓ Aprovado" : p.verification_status === "rejected" ? "✗ Rejeitado" : "⏳ Pendente"}
+                        </span>
+                      </td>
+                      <td style={s.td}>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button style={s.btn(C.green + "18", C.green)} onClick={() => updateProfessional(p.id, { verification_status: "approved", available: true })}>Aprovar</button>
+                          <button style={s.btn(C.red + "18", C.red)} onClick={() => updateProfessional(p.id, { verification_status: "rejected", available: false })}>Rejeitar</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ORDERS */}
+          {tab === "orders" && (
+            <div style={s.card}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    {["Serviço", "Cliente", "Data", "Total", "Status", "Ações"].map(h => <th key={h} style={s.th}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.length === 0 ? (
+                    <tr><td colSpan={6} style={{ ...s.td, textAlign: "center", color: C.muted, padding: 40 }}>Nenhum pedido ainda</td></tr>
+                  ) : orders.map(o => (
+                    <tr key={o.id}>
+                      <td style={{ ...s.td, fontWeight: 600 }}>{o.service_name || "—"}</td>
+                      <td style={{ ...s.td, color: C.muted, fontSize: 13 }}>{o.user_email || "—"}</td>
+                      <td style={s.td}>{o.date ? `${o.date} ${o.time || ""}` : "—"}</td>
+                      <td style={{ ...s.td, fontWeight: 700, color: C.purple }}>R${o.total || 0}</td>
+                      <td style={s.td}>
+                        <span style={s.badge(o.status === "completed" ? C.green : o.status === "cancelled" ? C.red : C.yellow)}>
+                          {o.status === "completed" ? "Concluído" : o.status === "cancelled" ? "Cancelado" : "Pendente"}
+                        </span>
+                      </td>
+                      <td style={s.td}>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button style={s.btn(C.green + "18", C.green)} onClick={() => updateOrder(o.id, "completed")}>Concluir</button>
+                          <button style={s.btn(C.red + "18", C.red)} onClick={() => updateOrder(o.id, "cancelled")}>Cancelar</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+        </div>
+      </main>
+
+      {/* MODAL SERVIÇO */}
+      {modal === "service" && (
+        <div style={{ position: "fixed", inset: 0, background: "#00000055", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500 }}>
+          <div style={{ background: C.white, borderRadius: 20, padding: 32, width: "100%", maxWidth: 480, boxShadow: "0 20px 60px #00000030" }}>
+            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 24, fontFamily: FONT }}>{svcForm.id ? "Editar Serviço" : "Novo Serviço"}</div>
+            {[
+              ["Nome do serviço", "name", "text"],
+              ["Ícone (emoji)", "icon", "text"],
+              ["Categoria", "category", "text"],
+              ["Preço mínimo (R$)", "price_min", "number"],
+              ["Descrição", "description", "text"],
+            ].map(([label, key, type]) => (
+              <div key={key} style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontWeight: 600, fontSize: 13, color: C.muted, marginBottom: 6, fontFamily: FONT }}>{label}</label>
+                <input style={s.input} type={type} value={svcForm[key]} onChange={e => setSvcForm({ ...svcForm, [key]: e.target.value })} />
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+              <button style={{ ...s.btn(C.gray, C.text), flex: 1 }} onClick={() => setModal(null)}>Cancelar</button>
+              <button style={{ ...s.btn(), flex: 1 }} onClick={saveService}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
