@@ -328,41 +328,67 @@ export default function Admin() {
 
           {/* PROFESSIONALS */}
           {tab === "professionals" && (
-            <div style={s.card}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    {["Nome", "Especialidade", "Avaliação", "Status", "Verificação", "Ações"].map(h => <th key={h} style={s.th}>{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {professionals.length === 0 ? (
-                    <tr><td colSpan={6} style={{ ...s.td, textAlign: "center", color: C.muted, padding: 40 }}>Nenhum profissional cadastrado</td></tr>
-                  ) : professionals.map(p => (
-                    <tr key={p.id}>
-                      <td style={{ ...s.td, fontWeight: 600 }}>{p.name}</td>
-                      <td style={s.td}>{p.specialty || "—"}</td>
-                      <td style={s.td}>⭐ {p.rating || "—"}</td>
-                      <td style={s.td}>
-                        <span style={s.badge(p.available ? C.green : C.red)}>
-                          {p.available ? "Disponível" : "Indisponível"}
-                        </span>
-                      </td>
-                      <td style={s.td}>
-                        <span style={s.badge(p.verification_status === "approved" ? C.green : p.verification_status === "rejected" ? C.red : C.yellow)}>
-                          {p.verification_status === "approved" ? "✓ Aprovado" : p.verification_status === "rejected" ? "✗ Rejeitado" : "⏳ Pendente"}
-                        </span>
-                      </td>
-                      <td style={s.td}>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <button style={s.btn(C.green + "18", C.green)} onClick={() => updateProfessional(p.id, { verification_status: "approved", available: true })}>Aprovar</button>
-                          <button style={s.btn(C.red + "18", C.red)} onClick={() => updateProfessional(p.id, { verification_status: "rejected", available: false })}>Rejeitar</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div>
+              <div style={{ color: C.muted, fontSize: 14, marginBottom: 16 }}>{professionals.length} profissional(is) cadastrado(s)</div>
+              {professionals.length === 0 ? (
+                <div style={{ ...s.card, textAlign: "center", padding: 40, color: C.muted }}>Nenhum profissional cadastrado ainda.</div>
+              ) : professionals.map(p => (
+                <div key={p.id} style={{ ...s.card, marginBottom: 16 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+                    {/* Foto de perfil */}
+                    <div style={{ width: 72, height: 72, borderRadius: "50%", overflow: "hidden", background: C.purpleBg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+                      {p.photo_url ? <img src={p.photo_url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤"}
+                    </div>
+                    {/* Dados */}
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ fontWeight: 800, fontSize: 17, fontFamily: FONT }}>{p.name}</div>
+                      <div style={{ color: C.muted, fontSize: 13, marginBottom: 6 }}>{p.specialty} {p.city ? `• ${p.city}` : ""}</div>
+                      {p.phone && <div style={{ color: C.muted, fontSize: 13 }}>📱 {p.phone}</div>}
+                      {p.cpf && <div style={{ color: C.muted, fontSize: 13 }}>📋 CPF: {p.cpf}</div>}
+                      {p.bio && <div style={{ color: C.text, fontSize: 13, marginTop: 6, fontStyle: "italic" }}>"{p.bio}"</div>}
+                    </div>
+                    {/* Status */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+                      <span style={s.badge(p.verification_status === "approved" ? C.green : p.verification_status === "rejected" ? C.red : C.yellow)}>
+                        {p.verification_status === "approved" ? "✓ Aprovado" : p.verification_status === "rejected" ? "✗ Rejeitado" : "⏳ Pendente"}
+                      </span>
+                      <span style={s.badge(p.available ? C.green : C.muted)}>
+                        {p.available ? "● Disponível" : "● Indisponível"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Documento */}
+                  {p.doc_url && (
+                    <div style={{ marginTop: 16, padding: 12, background: C.gray, borderRadius: 12 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: C.muted, marginBottom: 8 }}>📄 Documento enviado</div>
+                      {p.doc_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                        <img src={p.doc_url} alt="Documento" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 8, objectFit: "contain" }} />
+                      ) : (
+                        <a href={p.doc_url} target="_blank" rel="noopener noreferrer" style={{ color: C.purple, fontWeight: 600, fontSize: 14 }}>
+                          📎 Ver documento anexado
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {!p.doc_url && (
+                    <div style={{ marginTop: 12, padding: 10, background: C.yellow + "18", borderRadius: 10, color: C.yellow, fontSize: 13, fontWeight: 600 }}>
+                      ⚠️ Nenhum documento enviado
+                    </div>
+                  )}
+
+                  {/* Ações */}
+                  <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                    <button style={{ ...s.btn(C.green), flex: 1 }} onClick={() => updateProfessional(p.id, { verification_status: "approved", available: true })}>
+                      ✓ Aprovar profissional
+                    </button>
+                    <button style={{ ...s.btn(C.red + "18", C.red), flex: 1 }} onClick={() => updateProfessional(p.id, { verification_status: "rejected", available: false })}>
+                      ✗ Rejeitar
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
