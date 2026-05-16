@@ -381,10 +381,13 @@ export default function Admin() {
                   {/* Ações */}
                   <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                     <button style={{ ...s.btn(C.green), flex: 1 }} onClick={() => updateProfessional(p.id, { verification_status: "approved", available: true })}>
-                      ✓ Aprovar profissional
+                      ✓ Aprovar
                     </button>
                     <button style={{ ...s.btn(C.red + "18", C.red), flex: 1 }} onClick={() => updateProfessional(p.id, { verification_status: "rejected", available: false })}>
                       ✗ Rejeitar
+                    </button>
+                    <button style={{ ...s.btn(p.available ? "#37415118" : C.purpleBg, p.available ? "#374151" : C.purple), flex: 1 }} onClick={() => updateProfessional(p.id, { available: !p.available })}>
+                      {p.available ? "🚫 Bloquear" : "✓ Desbloquear"}
                     </button>
                   </div>
                 </div>
@@ -458,4 +461,3 @@ export default function Admin() {
     </div>
   );
 }
-// deploy: Fri May 15 23:45:42 UTC 2026
