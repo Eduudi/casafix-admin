@@ -133,6 +133,13 @@ export default function Admin() {
     showToast("Profissional atualizado!");
   };
 
+  const deleteProfessional = async (id) => {
+    if (!window.confirm("Tem certeza que deseja excluir este profissional?")) return;
+    await api(`professionals?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ verification_status: "deleted" }) });
+    await loadAll();
+    showToast("Profissional excluído.");
+  };
+
   const updateOrder = async (id, status) => {
     await api(`orders?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
     await loadAll();
@@ -329,10 +336,10 @@ export default function Admin() {
           {/* PROFESSIONALS */}
           {tab === "professionals" && (
             <div>
-              <div style={{ color: C.muted, fontSize: 14, marginBottom: 16 }}>{professionals.length} profissional(is) cadastrado(s)</div>
-              {professionals.length === 0 ? (
+              <div style={{ color: C.muted, fontSize: 14, marginBottom: 16 }}>{professionals.filter(p => p.verification_status !== "deleted").length} profissional(is) cadastrado(s)</div>
+              {professionals.filter(p => p.verification_status !== "deleted").length === 0 ? (
                 <div style={{ ...s.card, textAlign: "center", padding: 40, color: C.muted }}>Nenhum profissional cadastrado ainda.</div>
-              ) : professionals.map(p => (
+              ) : professionals.filter(p => p.verification_status !== "deleted").map(p => (
                 <div key={p.id} style={{ ...s.card, marginBottom: 16 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
                     {/* Foto de perfil */}
@@ -388,6 +395,9 @@ export default function Admin() {
                     </button>
                     <button style={{ ...s.btn(p.available ? "#37415118" : C.purpleBg, p.available ? "#374151" : C.purple), flex: 1 }} onClick={() => updateProfessional(p.id, { available: !p.available })}>
                       {p.available ? "🚫 Bloquear" : "✓ Desbloquear"}
+                    </button>
+                    <button style={{ ...s.btn(C.red + "18", C.red), flex: 1 }} onClick={() => deleteProfessional(p.id)}>
+                      🗑 Excluir
                     </button>
                   </div>
                 </div>
