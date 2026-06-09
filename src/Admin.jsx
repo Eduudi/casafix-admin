@@ -248,7 +248,7 @@ export default function Admin() {
                   { label: "Receita Total", value: `R$${revenue.toLocaleString()}`, icon: "💰", color: C.purple },
                   { label: "Taxa da Plataforma", value: `R$${fee.toLocaleString()}`, icon: "📈", color: C.green },
                   { label: "Total de Pedidos", value: orders.length, icon: "📋", color: C.yellow },
-                  { label: "Profissionais", value: professionals.length, icon: "👷", color: C.purpleLight },
+                  { label: "Profissionais", value: professionals.filter(p => p.verification_status !== "deleted").length, icon: "👷", color: C.purpleLight },
                 ].map(stat => (
                   <div key={stat.label} style={s.statCard}>
                     <div style={{ fontSize: 28, marginBottom: 8 }}>{stat.icon}</div>
