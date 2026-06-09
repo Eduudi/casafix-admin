@@ -57,6 +57,7 @@ export default function Admin() {
   const [modal, setModal] = useState(null);
   const [svcForm, setSvcForm] = useState({ id: null, name: "", icon: "🔧", category: "Geral", price_min: "", description: "" });
   const [toast, setToast] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("ela_admin");
@@ -133,9 +134,11 @@ export default function Admin() {
     showToast("Profissional atualizado!");
   };
 
-  const deleteProfessional = async (id) => {
-    if (!window.confirm("Tem certeza que deseja excluir este profissional?")) return;
-    await api(`professionals?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ verification_status: "deleted" }) });
+  const askDeleteProfessional = (id) => setConfirmDelete(id);
+
+  const confirmDeleteProfessional = async () => {
+    await api(`professionals?id=eq.${confirmDelete}`, { method: "PATCH", body: JSON.stringify({ verification_status: "deleted" }) });
+    setConfirmDelete(null);
     await loadAll();
     showToast("Profissional excluído.");
   };
@@ -396,7 +399,7 @@ export default function Admin() {
                     <button style={{ ...s.btn(p.available ? "#37415118" : C.purpleBg, p.available ? "#374151" : C.purple), flex: 1 }} onClick={() => updateProfessional(p.id, { available: !p.available })}>
                       {p.available ? "🚫 Bloquear" : "✓ Desbloquear"}
                     </button>
-                    <button style={{ ...s.btn(C.red + "18", C.red), flex: 1 }} onClick={() => deleteProfessional(p.id)}>
+                    <button style={{ ...s.btn(C.red + "18", C.red), flex: 1 }} onClick={() => askDeleteProfessional(p.id)}>
                       🗑 Excluir
                     </button>
                   </div>
@@ -443,6 +446,23 @@ export default function Admin() {
 
         </div>
       </main>
+
+      {/* MODAL CONFIRMAR EXCLUSÃO */}
+      {confirmDelete && (
+        <div style={{ position: "fixed", inset: 0, background: "#00000066", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
+          <div style={{ background: C.white, borderRadius: 20, padding: 32, width: "100%", maxWidth: 420, boxShadow: "0 20px 60px #00000030", fontFamily: FONT }}>
+            <div style={{ fontSize: 40, textAlign: "center", marginBottom: 16 }}>🗑️</div>
+            <div style={{ fontWeight: 800, fontSize: 18, textAlign: "center", marginBottom: 8, color: C.text }}>Excluir profissional?</div>
+            <div style={{ color: C.muted, fontSize: 14, textAlign: "center", marginBottom: 28 }}>
+              Esta ação não pode ser desfeita pelo painel. O registro será ocultado da listagem.
+            </div>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button style={{ ...s.btn(C.gray, C.text), flex: 1 }} onClick={() => setConfirmDelete(null)}>Cancelar</button>
+              <button style={{ ...s.btn(C.red, C.white), flex: 1 }} onClick={confirmDeleteProfessional}>Confirmar exclusão</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL SERVIÇO */}
       {modal === "service" && (
